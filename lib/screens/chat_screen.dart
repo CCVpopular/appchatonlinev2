@@ -42,7 +42,7 @@ class _ChatScreenState extends State<ChatScreen> {
         final index = messages.indexWhere((msg) => msg['id'] == messageId);
         if (index != -1) {
           messages[index] = {
-            ...messages[index]!,
+            ...messages[index],
             'isRecalled': 'true'
           };
         }

@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
 import '../services/friend_service.dart';
 import 'addfriend_screen.dart';
 import 'chat_screen.dart';
 import 'friendrequests_screen.dart';
-import 'login_screen.dart';
 
 class FriendsScreen extends StatefulWidget {
   final String userId;
