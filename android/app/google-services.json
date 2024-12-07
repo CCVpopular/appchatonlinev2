@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "896323584949",
+    "project_id": "app-chat-push-notification",
+    "storage_bucket": "app-chat-push-notification.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:896323584949:android:35e5a90feb0225a7ec4ffc",
+        "android_client_info": {
+          "package_name": "com.example.appchatonline"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCNeAzE-u1tsJ4Fvup2fGZiCx5auxMJcj4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
