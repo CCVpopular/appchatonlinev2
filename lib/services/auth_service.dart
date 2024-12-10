@@ -33,12 +33,13 @@ class AuthService {
   }
 
   // Lưu trạng thái đăng nhập
-  Future<void> saveLoginState(String userId, String username, bool rememberMe) async {
+  Future<void> saveLoginState(String userId, String username, String role, bool rememberMe) async {
     final prefs = await SharedPreferences.getInstance();
     if (rememberMe) {
       await prefs.setBool('isLoggedIn', true);
       await prefs.setString('userId', userId);
       await prefs.setString('username', username);
+      await prefs.setString('role', role);
     }
   }
 
@@ -49,7 +50,8 @@ class AuthService {
     if (isLoggedIn) {
       final userId = prefs.getString('userId') ?? '';
       final username = prefs.getString('username') ?? '';
-      return {'userId': userId, 'username': username};
+      final role = prefs.getString('role') ?? 'user';
+      return {'userId': userId, 'username': username, 'role': role};
     }
     return null;
   }

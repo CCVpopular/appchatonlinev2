@@ -6,6 +6,7 @@ const UserSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
   fcmToken: { type: String },
   status: { type: String, enum: ['active', 'inactive'], default: 'active' },
+  role: { type: String, enum: ['user', 'admin'], default: 'user' },
 });
 
 module.exports = mongoose.model('User', UserSchema);

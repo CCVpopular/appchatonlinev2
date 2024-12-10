@@ -32,6 +32,10 @@ class MyApp extends StatelessWidget {
       title: 'Chat App',
       theme: ThemeData(primarySwatch: Colors.blue),
       home: initialScreen,
+      routes: {
+        '/login': (context) => LoginScreen(),
+        // ...existing routes...
+      },
     );
   }
 }
