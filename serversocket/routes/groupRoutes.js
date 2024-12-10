@@ -83,7 +83,8 @@ router.get('/group-messages/:groupId', async (req, res) => {
   try {
     const messages = await GroupMessage.find({ groupId })
       .populate('sender', 'username') // Lấy tên người gửi
-      .sort({ timestamp: 1 }); // Sắp xếp tin nhắn theo thời gian
+      .sort({ timestamp: 1 }) // Sắp xếp tin nhắn theo thời gian
+      .select('message sender timestamp isRecalled type'); // Add type to selection
 
     res.send(messages);
   } catch (err) {

@@ -84,6 +84,20 @@ async function getImageFolderId(baseFolder, roomName) {
   }
 }
 
+async function getGroupImageFolderId(baseFolder, groupId) {
+  try {
+    const chatFolder = await findOrCreateFolder('chat', baseFolder);
+    const groupChatFolder = await findOrCreateFolder('group_chat', chatFolder);
+    const roomFolder = await findOrCreateFolder(groupId, groupChatFolder);
+    const imageChatFolder = await findOrCreateFolder('imagechat', roomFolder);
+    
+    return imageChatFolder;
+  } catch (error) {
+    console.error('Error in getGroupImageFolderId:', error);
+    throw error;
+  }
+}
+
 // Multer setup for temporary file storage
 const upload = multer({
   dest: 'temp/',
@@ -242,6 +256,67 @@ io.on('connection', (socket) => {
 
     } catch (err) {
       console.error('Error handling image upload:', err);
+    }
+  });
+
+  socket.on('sendGroupImage', async (data) => {
+    try {
+      const { groupId, sender, imageData, fileName } = data;
+      const tempPath = path.join(__dirname, 'temp', fileName);
+      
+      // Save base64 image to temp file
+      fs.writeFileSync(tempPath, Buffer.from(imageData, 'base64'));
+
+      // Get folder ID for group images
+      const baseFolderId = '1uoKXq4MXKEpEMT3_Fwdtttm84AIpq-h0'; // Your base folder ID
+      const groupFolderId = await getGroupImageFolderId(baseFolderId, groupId);
+
+      // Upload to Google Drive
+      const fileMetadata = {
+        name: fileName,
+        parents: [groupFolderId]
+      };
+
+      const media = {
+        mimeType: 'image/jpeg',
+        body: fs.createReadStream(tempPath)
+      };
+
+      const driveResponse = await drive.files.create({
+        resource: fileMetadata,
+        media: media,
+        fields: 'id'
+      });
+
+      const directViewUrl = `https://drive.google.com/uc?export=view&id=${driveResponse.data.id}`;
+
+      // Save message with image URL
+      const groupMessage = new GroupMessage({
+        groupId,
+        sender,
+        message: directViewUrl,
+        type: 'image'
+      });
+      await groupMessage.save();
+
+      // Get sender's username
+      const senderUser = await User.findById(sender);
+      const senderName = senderUser ? senderUser.username : 'Unknown';
+
+      // Emit to group and cleanup
+      io.to(groupId).emit('receiveGroupMessage', {
+        groupId,
+        sender,
+        senderName,
+        message: directViewUrl,
+        type: 'image',
+        timestamp: groupMessage.timestamp
+      });
+
+      fs.unlinkSync(tempPath);
+
+    } catch (err) {
+      console.error('Error handling group image upload:', err);
     }
   });
 

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import '../config/config.dart';
@@ -32,6 +33,7 @@ class GroupChatService {
         'message': data['message'],
         'timestamp': data['timestamp'],
         'senderId': data['sender'], // Add sender ID for notification handling
+        'type': data['type'] ?? 'text', // Add type field
       };
       _currentMessages.add(newMessage);
       if (!_messagesgroupStreamController.isClosed) {
@@ -60,6 +62,7 @@ class GroupChatService {
             'timestamp': msg['timestamp'],
             'senderId': msg['sender']['_id'],
             'isRecalled': msg['isRecalled'] ?? false,
+            'type': msg['type'] ?? 'text', // Add type field
           };
         }).toList();
 
@@ -81,6 +84,23 @@ class GroupChatService {
       'sender': sender,
       'message': message,
     });
+  }
+
+  void sendImage(String sender, File imageFile) async {
+    try {
+      final bytes = await imageFile.readAsBytes();
+      final base64Image = base64Encode(bytes);
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
+
+      socket.emit('sendGroupImage', {
+        'groupId': groupId,
+        'sender': sender,
+        'imageData': base64Image,
+        'fileName': fileName,
+      });
+    } catch (e) {
+      print('Error sending image: $e');
+    }
   }
 
   void recallMessage(String messageId) {
