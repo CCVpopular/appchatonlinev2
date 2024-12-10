@@ -37,6 +37,53 @@ const auth = new google.auth.GoogleAuth({
 
 const drive = google.drive({ version: 'v3', auth });
 
+// Add these helper functions after drive initialization
+async function findOrCreateFolder(folderName, parentId) {
+  try {
+    // Search for existing folder
+    const response = await drive.files.list({
+      q: `name='${folderName}' and mimeType='application/vnd.google-apps.folder' and '${parentId}' in parents and trashed=false`,
+      fields: 'files(id)',
+    });
+
+    if (response.data.files.length > 0) {
+      return response.data.files[0].id;
+    }
+
+    // Create new folder if not found
+    const fileMetadata = {
+      name: folderName,
+      mimeType: 'application/vnd.google-apps.folder',
+      parents: [parentId]
+    };
+
+    const folder = await drive.files.create({
+      resource: fileMetadata,
+      fields: 'id'
+    });
+
+    return folder.data.id;
+  } catch (error) {
+    console.error('Error in findOrCreateFolder:', error);
+    throw error;
+  }
+}
+
+async function getImageFolderId(baseFolder, roomName) {
+  try {
+    // Create folder hierarchy
+    const chatFolder = await findOrCreateFolder('chat', baseFolder);
+    const privateChatFolder = await findOrCreateFolder('private_chat', chatFolder);
+    const roomFolder = await findOrCreateFolder(roomName, privateChatFolder);
+    const imageChatFolder = await findOrCreateFolder('imagechat', roomFolder);
+    
+    return imageChatFolder;
+  } catch (error) {
+    console.error('Error in getImageFolderId:', error);
+    throw error;
+  }
+}
+
 // Multer setup for temporary file storage
 const upload = multer({
   dest: 'temp/',
@@ -139,6 +186,7 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Replace the existing socket.on('sendImage') with this updated version
   socket.on('sendImage', async (data) => {
     try {
       const { sender, receiver, imageData, fileName } = data;
@@ -146,27 +194,31 @@ io.on('connection', (socket) => {
       
       // Save base64 image to temp file
       fs.writeFileSync(tempPath, Buffer.from(imageData, 'base64'));
-  
-      // Upload to Google Drive
+
+      // Get room-specific folder ID
+      const roomName = [sender, receiver].sort().join('_');
+      const baseFolderId = '1uoKXq4MXKEpEMT3_Fwdtttm84AIpq-h0'; // Your base folder ID
+      const roomFolderId = await getImageFolderId(baseFolderId, roomName);
+
+      // Upload to Google Drive in room-specific folder
       const fileMetadata = {
         name: fileName,
-        parents: ['1uoKXq4MXKEpEMT3_Fwdtttm84AIpq-h0'] // Your folder ID
+        parents: [roomFolderId]
       };
-  
+
       const media = {
         mimeType: 'image/jpeg',
         body: fs.createReadStream(tempPath)
       };
-  
+
       const driveResponse = await drive.files.create({
         resource: fileMetadata,
         media: media,
-        fields: 'id'  // Only request ID
+        fields: 'id'
       });
-  
-      // Create direct view URL
+
       const directViewUrl = `https://drive.google.com/uc?export=view&id=${driveResponse.data.id}`;
-  
+
       // Save message with direct view URL
       const newMessage = new Message({
         sender,
@@ -175,9 +227,8 @@ io.on('connection', (socket) => {
         type: 'image'
       });
       await newMessage.save();
-  
-      // Create room name and emit
-      const roomName = [sender, receiver].sort().join('_');
+
+      // Emit to room and cleanup
       io.to(roomName).emit('receiveMessage', {
         _id: newMessage._id,
         sender,
@@ -186,10 +237,9 @@ io.on('connection', (socket) => {
         type: 'image',
         timestamp: new Date()
       });
-  
-      // Cleanup temp file
+
       fs.unlinkSync(tempPath);
-  
+
     } catch (err) {
       console.error('Error handling image upload:', err);
     }
