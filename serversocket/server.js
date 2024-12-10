@@ -12,6 +12,11 @@ const GroupRoutes = require('./routes/groupRoutes')
 const Group = require('./models/Group');
 const userRoutes = require('./routes/userRoutes')
 
+const { google } = require('googleapis');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
@@ -24,6 +29,19 @@ admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
 
+// Google Drive Setup
+const auth = new google.auth.GoogleAuth({
+  keyFile: './key/app-chat-push-notification.json',
+  scopes: ['https://www.googleapis.com/auth/drive.file'],
+});
+
+const drive = google.drive({ version: 'v3', auth });
+
+// Multer setup for temporary file storage
+const upload = multer({
+  dest: 'temp/',
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+});
 
 // Kết nối MongoDB
 mongoose.connect('mongodb://localhost:27017/chatApp', {
@@ -118,6 +136,62 @@ io.on('connection', (socket) => {
       }
     } catch (err) {
       console.error('Error handling sendMessage:', err);
+    }
+  });
+
+  socket.on('sendImage', async (data) => {
+    try {
+      const { sender, receiver, imageData, fileName } = data;
+      const tempPath = path.join(__dirname, 'temp', fileName);
+      
+      // Save base64 image to temp file
+      fs.writeFileSync(tempPath, Buffer.from(imageData, 'base64'));
+  
+      // Upload to Google Drive
+      const fileMetadata = {
+        name: fileName,
+        parents: ['1uoKXq4MXKEpEMT3_Fwdtttm84AIpq-h0'] // Your folder ID
+      };
+  
+      const media = {
+        mimeType: 'image/jpeg',
+        body: fs.createReadStream(tempPath)
+      };
+  
+      const driveResponse = await drive.files.create({
+        resource: fileMetadata,
+        media: media,
+        fields: 'id'  // Only request ID
+      });
+  
+      // Create direct view URL
+      const directViewUrl = `https://drive.google.com/uc?export=view&id=${driveResponse.data.id}`;
+  
+      // Save message with direct view URL
+      const newMessage = new Message({
+        sender,
+        receiver,
+        message: directViewUrl,
+        type: 'image'
+      });
+      await newMessage.save();
+  
+      // Create room name and emit
+      const roomName = [sender, receiver].sort().join('_');
+      io.to(roomName).emit('receiveMessage', {
+        _id: newMessage._id,
+        sender,
+        receiver,
+        message: directViewUrl,
+        type: 'image',
+        timestamp: new Date()
+      });
+  
+      // Cleanup temp file
+      fs.unlinkSync(tempPath);
+  
+    } catch (err) {
+      console.error('Error handling image upload:', err);
     }
   });
 

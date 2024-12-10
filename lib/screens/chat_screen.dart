@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../services/chat_service.dart';
 
 class ChatScreen extends StatefulWidget {
   final String userId;
   final String friendId;
 
-  const ChatScreen({Key? key, required this.userId, required this.friendId}) : super(key: key);
+  const ChatScreen({Key? key, required this.userId, required this.friendId})
+      : super(key: key);
 
   @override
   _ChatScreenState createState() => _ChatScreenState();
@@ -16,6 +20,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
   final List<Map<String, String>> messages = [];
   bool isLoading = true;
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
@@ -41,10 +46,7 @@ class _ChatScreenState extends State<ChatScreen> {
       setState(() {
         final index = messages.indexWhere((msg) => msg['id'] == messageId);
         if (index != -1) {
-          messages[index] = {
-            ...messages[index],
-            'isRecalled': 'true'
-          };
+          messages[index] = {...messages[index], 'isRecalled': 'true'};
         }
       });
     });
@@ -64,6 +66,17 @@ class _ChatScreenState extends State<ChatScreen> {
         isLoading = false;
       });
       print('Error loading messages: $e');
+    }
+  }
+
+  Future<void> _pickAndSendImage() async {
+    try {
+      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+      if (image != null) {
+        await chatService.sendImage(File(image.path));
+      }
+    } catch (e) {
+      print('Error picking image: $e');
     }
   }
 
@@ -105,50 +118,118 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Widget _buildMessageContent(Map<String, String> message) {
     final isRecalled = message['isRecalled'] == 'true';
-    final timestamp = DateTime.parse(message['timestamp'] ?? DateTime.now().toIso8601String());
-    final timeStr = "${timestamp.day}/${timestamp.month} ${timestamp.hour.toString().padLeft(2,'0')}:${timestamp.minute.toString().padLeft(2,'0')}";
-    
-    return Container(
-      margin: const EdgeInsets.all(5.0),
-      padding: const EdgeInsets.all(12.0),
-      decoration: BoxDecoration(
-        color: message['sender'] == widget.userId
-            ? const Color.fromARGB(145, 130, 190, 197)
-            : Colors.grey[300],
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Column(
-        crossAxisAlignment: message['sender'] == widget.userId 
-            ? CrossAxisAlignment.end 
-            : CrossAxisAlignment.start,
-        children: [
-          isRecalled 
-            ? Row(
-                mainAxisSize: MainAxisSize.min,
-                children: const [
-                  Icon(Icons.replay, size: 16, color: Colors.grey),
-                  SizedBox(width: 4),
-                  Text(
-                    'Message has been recalled',
-                    style: TextStyle(
-                      fontStyle: FontStyle.italic,
-                      color: Colors.grey,
-                    ),
-                  ),
-                ],
-              )
-            : Text(message['message'] ?? ''),
-          const SizedBox(height: 4),
+    final isImage = message['type'] == 'image';
+    final timestamp = DateTime.parse(
+        message['timestamp'] ?? DateTime.now().toIso8601String());
+    final timeStr =
+        "${timestamp.day}/${timestamp.month} ${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}";
+
+    if (isRecalled) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: const [
+          Icon(Icons.replay, size: 16, color: Colors.grey),
+          SizedBox(width: 4),
           Text(
-            timeStr,
-            style: const TextStyle(
-              fontSize: 12,
+            'Message has been recalled',
+            style: TextStyle(
+              fontStyle: FontStyle.italic,
               color: Colors.grey,
             ),
           ),
         ],
-      ),
-    );
+      );
+    } else if (isImage) {
+      return Container(
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.6,
+          maxHeight: 200,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            CachedNetworkImage(
+              imageUrl: message['message'] ?? '',
+              fit: BoxFit.contain,
+              placeholder: (context, url) => Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const CircularProgressIndicator(),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Loading...',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+              ),
+              errorWidget: (context, url, error) => Column(
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  Icon(Icons.error, color: Colors.red, size: 32),
+                  SizedBox(height: 4),
+                  Text(
+                    'Failed to load image',
+                    style: TextStyle(color: Colors.red, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            // Add timestamp overlay
+            Positioned(
+              bottom: 4,
+              right: 4,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  timeStr,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      return Container(
+        margin: const EdgeInsets.all(5.0),
+        padding: const EdgeInsets.all(12.0),
+        decoration: BoxDecoration(
+          color: message['sender'] == widget.userId
+              ? const Color.fromARGB(145, 130, 190, 197)
+              : Colors.grey[300],
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          crossAxisAlignment: message['sender'] == widget.userId
+              ? CrossAxisAlignment.end
+              : CrossAxisAlignment.start,
+          children: [
+            Text(message['message'] ?? ''),
+            const SizedBox(height: 4),
+            Text(
+              timeStr,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Colors.grey,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   @override
@@ -156,7 +237,7 @@ class _ChatScreenState extends State<ChatScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Chat'),
-        backgroundColor: Colors.transparent,   // Màu của AppBar
+        backgroundColor: Colors.transparent, // Màu của AppBar
         elevation: 4.0, // Tạo hiệu ứng đổ bóng cho AppBar
         flexibleSpace: Container(
           decoration: const BoxDecoration(
@@ -164,7 +245,7 @@ class _ChatScreenState extends State<ChatScreen> {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Color.fromARGB(207, 70, 131, 180),  // Màu thứ hai
+                Color.fromARGB(207, 70, 131, 180), // Màu thứ hai
                 Color.fromARGB(41, 130, 190, 197), // Màu đầu tiên
               ],
             ),
@@ -184,7 +265,9 @@ class _ChatScreenState extends State<ChatScreen> {
                       final isRecalled = message['isRecalled'] == 'true';
 
                       return GestureDetector(
-                        onLongPress: isCurrentUser && !isRecalled && message['id'] != null
+                        onLongPress: isCurrentUser &&
+                                !isRecalled &&
+                                message['id'] != null
                             ? () => _showRecallDialog(message['id']!)
                             : null,
                         child: Row(
@@ -198,7 +281,8 @@ class _ChatScreenState extends State<ChatScreen> {
                               const Padding(
                                 padding: EdgeInsets.only(left: 8.0, right: 4.0),
                                 child: CircleAvatar(
-                                  backgroundColor: Colors.grey, // Màu xám cho avatar
+                                  backgroundColor:
+                                      Colors.grey, // Màu xám cho avatar
                                   radius: 20, // Kích thước avatar
                                   child: Icon(
                                     Icons.person, // Biểu tượng người dùng
@@ -209,12 +293,12 @@ class _ChatScreenState extends State<ChatScreen> {
                               ),
                             // Bong bóng tin nhắn
                             Flexible(child: _buildMessageContent(message)),
-                            if (isCurrentUser) 
+                            if (isCurrentUser)
                               const Padding(
                                 padding: EdgeInsets.only(left: 4.0, right: 8.0),
                                 child: CircleAvatar(
-                                  backgroundColor:
-                                      Color.fromARGB(255, 3, 62, 72), // Màu xanh cho avatar
+                                  backgroundColor: Color.fromARGB(
+                                      255, 3, 62, 72), // Màu xanh cho avatar
                                   radius: 20, // Kích thước avatar
                                   child: Icon(
                                     Icons.person, // Biểu tượng người dùng
@@ -233,26 +317,36 @@ class _ChatScreenState extends State<ChatScreen> {
             padding: const EdgeInsets.all(8.0),
             child: Row(
               children: [
+                IconButton(
+                  icon: Icon(Icons.image),
+                  onPressed: _pickAndSendImage,
+                ),
                 Expanded(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8.0),  // Padding cho viền
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8.0), // Padding cho viền
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: [
-                          Color.fromARGB(176, 70, 131, 180),  // Màu thứ hai của gradient
-                          Color.fromARGB(39, 130, 190, 197), // Màu đầu tiên của gradient
+                          Color.fromARGB(
+                              176, 70, 131, 180), // Màu thứ hai của gradient
+                          Color.fromARGB(
+                              39, 130, 190, 197), // Màu đầu tiên của gradient
                         ],
                       ),
-                      borderRadius: BorderRadius.circular(15),  // Bo góc cho thanh ngoài
+                      borderRadius:
+                          BorderRadius.circular(15), // Bo góc cho thanh ngoài
                     ),
                     child: TextField(
                       controller: _controller,
                       decoration: const InputDecoration(
                         hintText: 'Enter a message',
-                        border: InputBorder.none,  // Loại bỏ viền mặc định của TextField
-                        contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+                        border: InputBorder
+                            .none, // Loại bỏ viền mặc định của TextField
+                        contentPadding:
+                            EdgeInsets.symmetric(vertical: 10, horizontal: 10),
                       ),
                     ),
                   ),
