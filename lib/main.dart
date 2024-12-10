@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_options.dart';
 import 'screens/login_screen.dart';
+import 'screens/manage_users_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -34,6 +35,7 @@ class MyApp extends StatelessWidget {
       home: initialScreen,
       routes: {
         '/login': (context) => LoginScreen(),
+        '/manage-users': (context) => ManageUsersScreen(),
         // ...existing routes...
       },
     );
