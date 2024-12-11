@@ -7,7 +7,7 @@ const MessageSchema = new mongoose.Schema({
   timestamp: { type: Date, default: Date.now },
   status: { type: String, enum: ['sent', 'delivered', 'read'], default: 'sent' },
   isRecalled: { type: Boolean, default: false },
-  type: { type: String, enum: ['text', 'image'], default: 'text' },
+  type: { type: String, enum: ['text', 'image', 'file'], default: 'text' }, // Added 'file' to enum
 });
 
 module.exports = mongoose.model('Message', MessageSchema);

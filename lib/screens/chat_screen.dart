@@ -1,8 +1,12 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/chat_service.dart';
+import 'package:file_picker/file_picker.dart';
 
 class ChatScreen extends StatefulWidget {
   final String userId;
@@ -77,6 +81,23 @@ class _ChatScreenState extends State<ChatScreen> {
       }
     } catch (e) {
       print('Error picking image: $e');
+    }
+  }
+
+  Future<void> _pickAndSendFile() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles();
+      if (result != null) {
+        File file = File(result.files.single.path!);
+        String fileName = result.files.single.name;
+        String? mimeType = result.files.single.extension != null 
+            ? 'application/${result.files.single.extension}'
+            : 'application/octet-stream';
+        
+        await chatService.sendFile(file, fileName, mimeType);
+      }
+    } catch (e) {
+      print('Error picking file: $e');
     }
   }
 
@@ -202,6 +223,41 @@ class _ChatScreenState extends State<ChatScreen> {
           ],
         ),
       );
+    } else if (message['type'] == 'file') {
+      final fileInfo = jsonDecode(message['message']!);
+      return Container(
+        margin: const EdgeInsets.all(5.0),
+        padding: const EdgeInsets.all(12.0),
+        decoration: BoxDecoration(
+          color: message['sender'] == widget.userId
+              ? const Color.fromARGB(145, 130, 190, 197)
+              : Colors.grey[300],
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.file_present),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(fileInfo['fileName'],
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+            TextButton(
+              onPressed: () => launch(fileInfo['viewLink']),
+              child: Text('Open File'),
+            ),
+            Text(
+              timeStr,
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ],
+        ),
+      );
     } else {
       return Container(
         margin: const EdgeInsets.all(5.0),
@@ -320,6 +376,10 @@ class _ChatScreenState extends State<ChatScreen> {
                 IconButton(
                   icon: Icon(Icons.image),
                   onPressed: _pickAndSendImage,
+                ),
+                IconButton(
+                  icon: Icon(Icons.attach_file),
+                  onPressed: _pickAndSendFile,
                 ),
                 Expanded(
                   child: Container(

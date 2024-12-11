@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:appchatonline/services/SocketManager.dart';
 import 'package:http/http.dart' as http;
 import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:file_picker/file_picker.dart';
 
 import '../config/config.dart';
 
@@ -71,6 +72,24 @@ class ChatService {
       });
     } catch (e) {
       print('Error sending image: $e');
+    }
+  }
+
+  Future<void> sendFile(File file, String fileName, String mimeType) async {
+    try {
+      final bytes = await file.readAsBytes();
+      final base64File = base64Encode(bytes);
+
+      socket.emit('sendFile', {
+        'sender': userId,
+        'receiver': friendId,
+        'fileData': base64File,
+        'fileName': fileName,
+        'fileType': mimeType,
+      });
+    } catch (e) {
+      print('Error sending file: $e');
+      rethrow;
     }
   }
 
