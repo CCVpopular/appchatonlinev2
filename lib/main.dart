@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'firebase_options.dart';
+import 'screens/login_screen.dart';
+import 'screens/manage_users_screen.dart';
 import 'package:flutter/services.dart';
 import 'services/startup_service.dart';
 import 'screens/loading_screen.dart';
@@ -23,6 +27,13 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Chat App',
+      theme: ThemeData(primarySwatch: Colors.blue),
+      home: initialScreen,
+      routes: {
+        '/login': (context) => LoginScreen(),
+        '/manage-users': (context) => ManageUsersScreen(),
+        // ...existing routes...
+      },
       theme: ThemeData(
         primarySwatch: Colors.blue,
         useMaterial3: true,
