@@ -62,9 +62,9 @@ class AuthService {
     await _initPrefs();
     final isLoggedIn = _prefs?.getBool('isLoggedIn') ?? false;
     if (isLoggedIn) {
-      final userId = prefs.getString('userId') ?? '';
-      final username = prefs.getString('username') ?? '';
-      final role = prefs.getString('role') ?? 'user';
+      final userId = _prefs?.getString('userId') ?? '';
+      final username = _prefs?.getString('username') ?? '';
+      final role = _prefs?.getString('role') ?? 'user';
       return {'userId': userId, 'username': username, 'role': role};
     }
     return null;
