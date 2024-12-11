@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../services/groupchat_service.dart';
 import 'invitemember_screen.dart';
 
@@ -43,6 +46,16 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     if (_controller.text.isNotEmpty) {
       groupChatService.sendMessage(widget.userId, _controller.text);
       _controller.clear();
+    }
+  }
+
+  Future<void> _pickAndSendImage() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+    
+    if (image != null) {
+      File imageFile = File(image.path);
+      groupChatService.sendImage(widget.userId, imageFile);
     }
   }
 
@@ -115,22 +128,33 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                   ),
                 ),
               ),
-            isRecalled 
-                ? Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Icon(Icons.replay, size: 16, color: Colors.grey),
-                      SizedBox(width: 4),
-                      Text(
-                        'Message has been recalled',
-                        style: TextStyle(
-                          fontStyle: FontStyle.italic,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ],
+            if (!isRecalled)
+              message['type'] == 'image'
+                ? CachedNetworkImage(
+                    imageUrl: message['message'],
+                    placeholder: (context, url) => Container(
+                      width: 50,
+                      height: 50,
+                      child: CircularProgressIndicator(),
+                    ),
+                    errorWidget: (context, url, error) => Icon(Icons.error),
                   )
                 : Text(message['message'] ?? ''),
+            if (isRecalled)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  Icon(Icons.replay, size: 16, color: Colors.grey),
+                  SizedBox(width: 4),
+                  Text(
+                    'Message has been recalled',
+                    style: TextStyle(
+                      fontStyle: FontStyle.italic,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
             const SizedBox(height: 2),
             Text(
               _formatTime(message['timestamp']),
@@ -216,6 +240,10 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
             padding: const EdgeInsets.all(8.0),
             child: Row(
               children: [
+                IconButton(
+                  icon: Icon(Icons.image),
+                  onPressed: _pickAndSendImage,
+                ),
                 Expanded(
                   child: TextField(
                     controller: _controller,

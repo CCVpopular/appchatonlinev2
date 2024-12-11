@@ -1,31 +1,27 @@
-import 'package:appchatonline/screens/home_screen.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_options.dart';
 import 'screens/login_screen.dart';
 import 'screens/manage_users_screen.dart';
+import 'package:flutter/services.dart';
+import 'services/startup_service.dart';
+import 'screens/loading_screen.dart';
 
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
+  
+  SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+    ),
   );
-  final prefs = await SharedPreferences.getInstance();
-  final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
-  final userId = prefs.getString('userId') ?? '';
 
-  runApp(MyApp(
-    initialScreen: isLoggedIn
-        ? MyHomePage(userId: userId) // Chuyển đến màn hình bạn bè nếu đã đăng nhập
-        : LoginScreen(), // Chuyển đến màn hình đăng nhập nếu chưa đăng nhập
-  ));
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  final Widget initialScreen;
-
-  const MyApp({Key? key, required this.initialScreen}) : super(key: key);
+  const MyApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -38,6 +34,35 @@ class MyApp extends StatelessWidget {
         '/manage-users': (context) => ManageUsersScreen(),
         // ...existing routes...
       },
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        useMaterial3: true,
+        platform: TargetPlatform.android,
+        pageTransitionsTheme: const PageTransitionsTheme(
+          builders: {
+            TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+            TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          },
+        ),
+      ),
+      builder: (context, child) {
+        return ScrollConfiguration(
+          behavior: const ScrollBehavior().copyWith(
+            physics: const BouncingScrollPhysics(),
+            overscroll: false,
+          ),
+          child: child!,
+        );
+      },
+      home: FutureBuilder(
+        future: StartupService.initialize(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.done) {
+            return snapshot.data ?? const LoadingScreen();
+          }
+          return const LoadingScreen();
+        },
+      ),
     );
   }
 }

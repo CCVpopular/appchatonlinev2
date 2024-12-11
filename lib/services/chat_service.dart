@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:appchatonline/services/SocketManager.dart';
 import 'package:http/http.dart' as http;
 import 'package:socket_io_client/socket_io_client.dart' as IO;
@@ -30,6 +31,7 @@ class ChatService {
         'id': data['_id'], // Use the MongoDB _id from server
         'sender': data['sender'],
         'message': data['message'],
+        'type': data['type'] ?? 'text',
         'isRecalled': 'false',
         'timestamp': DateTime.now().toIso8601String(),
       });
@@ -52,6 +54,24 @@ class ChatService {
       'message': message,
     });
     // Don't add message to stream here - wait for server response
+  }
+
+  Future<void> sendImage(File imageFile) async {
+    try {
+      // Read and encode image
+      final bytes = await imageFile.readAsBytes();
+      final base64Image = base64Encode(bytes);
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
+
+      socket.emit('sendImage', {
+        'sender': userId,
+        'receiver': friendId,
+        'imageData': base64Image,
+        'fileName': fileName,
+      });
+    } catch (e) {
+      print('Error sending image: $e');
+    }
   }
 
   void recallMessage(String messageId) {
@@ -85,6 +105,7 @@ class ChatService {
             'id': msg['_id'].toString(),
             'sender': msg['sender'].toString(),
             'message': msg['message'].toString(),
+            'type': msg['type']?.toString() ?? 'text',
             'isRecalled': msg['isRecalled']?.toString() ?? 'false',
             'timestamp': msg['timestamp']?.toString() ?? DateTime.now().toIso8601String(),
           };
