@@ -17,7 +17,7 @@ router.get('/messages/:sender/:receiver', async (req, res) => {
         { sender, receiver },
         { sender: receiver, receiver: sender },
       ],
-    }).select('sender receiver message timestamp isRecalled').sort({ timestamp: 1 }); // Sắp xếp tin nhắn theo thời gian tăng dần
+    }).select('sender receiver message timestamp isRecalled type').sort({ timestamp: 1 }); // Sắp xếp tin nhắn theo thời gian tăng dần
 
     res.status(200).send(messages);
   } catch (err) {

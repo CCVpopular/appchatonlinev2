@@ -7,6 +7,20 @@ import '../config/config.dart';
 class AuthService {
   final String baseUrl = Config.apiBaseUrl;
 
+  static AuthService? _instance;
+  static SharedPreferences? _prefs;
+  
+  factory AuthService() {
+    _instance ??= AuthService._();
+    return _instance!;
+  }
+
+  AuthService._();
+
+  Future<void> _initPrefs() async {
+    _prefs ??= await SharedPreferences.getInstance();
+  }
+
   Future<Map<String, dynamic>> login(String username, String password) async {
     final response = await http.post(
       Uri.parse('$baseUrl/api/auth/login'),
@@ -34,29 +48,30 @@ class AuthService {
 
   // Lưu trạng thái đăng nhập
   Future<void> saveLoginState(String userId, String username, bool rememberMe) async {
-    final prefs = await SharedPreferences.getInstance();
+    await _initPrefs();
     if (rememberMe) {
-      await prefs.setBool('isLoggedIn', true);
-      await prefs.setString('userId', userId);
-      await prefs.setString('username', username);
+      await _prefs?.setBool('isLoggedIn', true);
+      await _prefs?.setString('userId', userId);
+      await _prefs?.setString('username', username);
     }
   }
 
   // Kiểm tra trạng thái đăng nhập
   Future<Map<String, String>?> checkLoginState() async {
-    final prefs = await SharedPreferences.getInstance();
-    final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+    await _initPrefs();
+    final isLoggedIn = _prefs?.getBool('isLoggedIn') ?? false;
     if (isLoggedIn) {
-      final userId = prefs.getString('userId') ?? '';
-      final username = prefs.getString('username') ?? '';
-      return {'userId': userId, 'username': username};
+      return {
+        'userId': _prefs?.getString('userId') ?? '',
+        'username': _prefs?.getString('username') ?? '',
+      };
     }
     return null;
   }
 
   // Đăng xuất
   Future<void> logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
+    await _initPrefs();
+    await _prefs?.clear();
   }
 }

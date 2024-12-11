@@ -42,5 +42,5 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-/serversocket/key/app-chat-push-notification.json
+**/serversocket/key/
 /lib/config/configapi.dart
