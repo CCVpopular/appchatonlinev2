@@ -36,14 +36,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _loadMessages();
 
     // Listen for new messages
-    chatService.messageStream.listen((message) {
-      setState(() {
-        // Check if message already exists to prevent duplicates
-        if (!messages.any((msg) => msg['id'] == message['id'])) {
-          messages.add(message);
-        }
-      });
-    });
+    _updateMessageStream();
 
     // Listen for message recalls
     chatService.recallStream.listen((messageId) {
@@ -77,9 +70,17 @@ class _ChatScreenState extends State<ChatScreen> {
     try {
       final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
       if (image != null) {
-        await chatService.sendImage(File(image.path));
+        await chatService.sendImage(
+          File(image.path),
+          onProgress: (progress) {
+            // Progress is now handled by the upload progress card
+          }
+        );
       }
     } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error sending image: $e')),
+      );
       print('Error picking image: $e');
     }
   }
@@ -94,9 +95,19 @@ class _ChatScreenState extends State<ChatScreen> {
             ? 'application/${result.files.single.extension}'
             : 'application/octet-stream';
         
-        await chatService.sendFile(file, fileName, mimeType);
+        await chatService.sendFile(
+          file, 
+          fileName, 
+          mimeType,
+          onProgress: (progress) {
+            // Progress is now handled by the upload progress card
+          }
+        );
       }
     } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error sending file: $e')),
+      );
       print('Error picking file: $e');
     }
   }
@@ -138,6 +149,43 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildMessageContent(Map<String, String> message) {
+    final isTemporary = message['isTemporary'] == 'true';
+    
+    if (isTemporary) {
+      return Container(
+        margin: const EdgeInsets.all(5.0),
+        padding: const EdgeInsets.all(12.0),
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.grey[300]!),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.grey[600]!),
+              ),
+            ),
+            SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                message['message'] ?? '',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     final isRecalled = message['isRecalled'] == 'true';
     final isImage = message['type'] == 'image';
     final timestamp = DateTime.parse(
@@ -286,6 +334,23 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
       );
     }
+  }
+
+  void _updateMessageStream() {
+    chatService.messageStream.listen((message) {
+      setState(() {
+        if (message['isTemporary'] == 'true') {
+          // Add temporary message
+          messages.add(message);
+        } else {
+          // Remove temporary message and add real message
+          messages.removeWhere((msg) => msg['isTemporary'] == 'true');
+          if (!messages.any((msg) => msg['id'] == message['id'])) {
+            messages.add(message);
+          }
+        }
+      });
+    });
   }
 
   @override
