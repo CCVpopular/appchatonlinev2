@@ -4,6 +4,9 @@ import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../services/groupchat_service.dart';
 import 'invitemember_screen.dart';
+import 'package:file_picker/file_picker.dart';
+import 'dart:convert';
+import 'package:url_launcher/url_launcher.dart';
 
 class GroupChatScreen extends StatefulWidget {
   final String groupId;
@@ -50,12 +53,55 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   }
 
   Future<void> _pickAndSendImage() async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-    
-    if (image != null) {
-      File imageFile = File(image.path);
-      groupChatService.sendImage(widget.userId, imageFile);
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+      
+      if (image != null) {
+        File imageFile = File(image.path);
+        await groupChatService.sendImage(
+          widget.userId, 
+          imageFile,
+          onProgress: (progress) {
+            // Progress is handled by temporary message
+            print('Upload progress: ${(progress * 100).toStringAsFixed(1)}%');
+          },
+        );
+      }
+    } catch (e) {
+      print('Error picking image: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error sending image: $e')),
+      );
+    }
+  }
+
+  Future<void> _pickAndSendFile() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles();
+      if (result != null) {
+        File file = File(result.files.single.path!);
+        String fileName = result.files.single.name;
+        String? mimeType = result.files.single.extension != null 
+            ? 'application/${result.files.single.extension}'
+            : 'application/octet-stream';
+        
+        await groupChatService.sendFile(
+          widget.userId,
+          file,
+          fileName,
+          mimeType,
+          onProgress: (progress) {
+            // Progress is handled by temporary message
+            print('Upload progress: ${(progress * 100).toStringAsFixed(1)}%');
+          },
+        );
+      }
+    } catch (e) {
+      print('Error picking file: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error sending file: $e')),
+      );
     }
   }
 
@@ -101,6 +147,38 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     final isRecalled = message['isRecalled'] == true;
     final isSender = message['senderId'] == widget.userId;
     
+    if (message['type'] == 'loading') {
+      return Container(
+        margin: const EdgeInsets.all(5.0),
+        padding: const EdgeInsets.all(12.0),
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.grey[600]!),
+              ),
+            ),
+            SizedBox(width: 8),
+            Text(
+              message['message'],
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return GestureDetector(
       onLongPress: isSender && !isRecalled 
           ? () => _showRecallDialog(message['id'])
@@ -139,7 +217,9 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                     ),
                     errorWidget: (context, url, error) => Icon(Icons.error),
                   )
-                : Text(message['message'] ?? ''),
+                : message['type'] == 'file'
+                  ? _buildFileMessageContent(message)
+                  : Text(message['message'] ?? ''),
             if (isRecalled)
               Row(
                 mainAxisSize: MainAxisSize.min,
@@ -165,6 +245,41 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildFileMessageContent(Map<String, dynamic> message) {
+    final fileInfo = jsonDecode(message['message']);
+    return Container(
+      margin: const EdgeInsets.all(5.0),
+      padding: const EdgeInsets.all(12.0),
+      decoration: BoxDecoration(
+        color: message['senderId'] == widget.userId
+            ? const Color.fromARGB(145, 130, 190, 197)
+            : Colors.grey[300],
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.file_present),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  fileInfo['fileName'],
+                  style: TextStyle(fontWeight: FontWeight.bold)
+                ),
+              ),
+            ],
+          ),
+          TextButton(
+            onPressed: () => launch(fileInfo['viewLink']),
+            child: Text('Open File'),
+          ),
+        ],
       ),
     );
   }
@@ -243,6 +358,10 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                 IconButton(
                   icon: Icon(Icons.image),
                   onPressed: _pickAndSendImage,
+                ),
+                IconButton(
+                  icon: Icon(Icons.attach_file),
+                  onPressed: _pickAndSendFile,
                 ),
                 Expanded(
                   child: TextField(
