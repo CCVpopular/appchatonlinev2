@@ -27,8 +27,6 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Chat App',
-      theme: ThemeData(primarySwatch: Colors.blue),
-      home: initialScreen,
       routes: {
         '/login': (context) => LoginScreen(),
         '/manage-users': (context) => ManageUsersScreen(),
