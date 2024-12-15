@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../config/config.dart';
 import '../services/groupchat_service.dart';
 import 'invitemember_screen.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:convert';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:http/http.dart' as http;
 
 class GroupChatScreen extends StatefulWidget {
   final String groupId;
@@ -22,6 +24,9 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   late GroupChatService groupChatService;
   final TextEditingController _controller = TextEditingController();
   List<Map<String, dynamic>> _currentMessages = [];
+  String? groupAvatar;
+  String? groupName;
+  Map<String, String> userAvatars = {};  // Add this line to store user avatars
 
   @override
   void initState() {
@@ -37,6 +42,75 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
         }
       });
     });
+
+    _loadGroupInfo();
+    _loadMemberAvatars();  // Add this line
+  }
+
+  Future<void> _loadGroupInfo() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${Config.apiBaseUrl}/api/groups/group-info/${widget.groupId}')
+      );
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          groupAvatar = data['avatar'];
+          groupName = data['name'];
+        });
+      }
+    } catch (e) {
+      print('Error loading group info: $e');
+    }
+  }
+
+  Future<void> _loadMemberAvatars() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${Config.apiBaseUrl}/api/groups/members/${widget.groupId}')
+      );
+      print(response.statusCode);
+      if (response.statusCode == 200) {
+        final members = jsonDecode(response.body) as List;
+        for (var member in members) {
+          userAvatars[member['_id']] = member['avatar'] ?? '';
+        }
+        if (mounted) setState(() {});
+      }
+    } catch (e) {
+      print('Error loading member avatars: $e');
+    }
+  }
+
+  Future<void> _updateGroupAvatar() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+      
+      if (image != null) {
+        final request = http.MultipartRequest(
+          'POST',
+          Uri.parse('${Config.apiBaseUrl}/api/groups/update-avatar/${widget.groupId}')
+        );
+
+        request.files.add(
+          await http.MultipartFile.fromPath('avatar', image.path)
+        );
+
+        final response = await request.send();
+        final responseData = await response.stream.bytesToString();
+        final data = jsonDecode(responseData);
+
+        if (response.statusCode == 200) {
+          setState(() {
+            groupAvatar = data['avatarUrl'];
+          });
+        }
+      }
+    } catch (e) {
+      print('Error updating group avatar: $e');
+    }
   }
 
   @override
@@ -284,11 +358,66 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     );
   }
 
+  Widget _buildMemberAvatar(String? userId, bool isSender) {
+    String? avatarUrl = userId != null ? userAvatars[userId] : null;
+
+    if (avatarUrl != null && avatarUrl.isNotEmpty) {
+      return Padding(
+        padding: EdgeInsets.only(
+          left: isSender ? 4.0 : 8.0,
+          right: isSender ? 8.0 : 4.0,
+        ),
+        child: CachedNetworkImage(
+          imageUrl: avatarUrl,
+          imageBuilder: (context, imageProvider) => CircleAvatar(
+            backgroundImage: imageProvider,
+            radius: 20,
+          ),
+          placeholder: (context, url) => CircleAvatar(
+            backgroundColor: isSender 
+              ? Color.fromARGB(255, 3, 62, 72)
+              : Colors.grey,
+            radius: 20,
+            child: Icon(Icons.person, color: Colors.white, size: 20),
+          ),
+          errorWidget: (context, url, error) => CircleAvatar(
+            backgroundColor: isSender 
+              ? Color.fromARGB(255, 3, 62, 72)
+              : Colors.grey,
+            radius: 20,
+            child: Icon(Icons.person, color: Colors.white, size: 20),
+          ),
+        ),
+      );
+    }
+
+    return CircleAvatar(
+      backgroundColor: isSender 
+        ? Color.fromARGB(255, 3, 62, 72)
+        : Colors.grey,
+      radius: 20,
+      child: Icon(Icons.person, color: Colors.white, size: 20),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Group Chat'),
+        title: Row(
+          children: [
+            GestureDetector(
+              onTap: _updateGroupAvatar,
+              child: CircleAvatar(
+                backgroundImage: groupAvatar != null ? 
+                  CachedNetworkImageProvider(groupAvatar!) : null,
+                child: groupAvatar == null ? Icon(Icons.group) : null,
+              ),
+            ),
+            SizedBox(width: 8),
+            Text(groupName ?? 'Group Chat'),
+          ],
+        ),
         actions: [
           IconButton(
             icon: Icon(Icons.person_add),
@@ -332,18 +461,10 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                           : MainAxisAlignment.start,
                       children: [
                         if (message['senderId'] != widget.userId)
-                          const CircleAvatar(
-                            backgroundColor: Colors.grey,
-                            radius: 20,
-                            child: Icon(Icons.person, color: Colors.white, size: 20),
-                          ),
+                          _buildMemberAvatar(message['senderId'], false),
                         Flexible(child: _buildMessageContent(message)),
                         if (message['senderId'] == widget.userId)
-                          const CircleAvatar(
-                            backgroundColor: Color.fromARGB(255, 3, 62, 72),
-                            radius: 20,
-                            child: Icon(Icons.person, color: Colors.white, size: 20),
-                          ),
+                          _buildMemberAvatar(message['senderId'], true),
                       ],
                     );
                   },

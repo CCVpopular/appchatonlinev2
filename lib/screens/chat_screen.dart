@@ -1,12 +1,13 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../config/config.dart';
 import '../services/chat_service.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:http/http.dart' as http;
 
 class ChatScreen extends StatefulWidget {
   final String userId;
@@ -25,6 +26,8 @@ class _ChatScreenState extends State<ChatScreen> {
   final List<Map<String, String>> messages = [];
   bool isLoading = true;
   final ImagePicker _picker = ImagePicker();
+  String? friendAvatar;
+  String? myAvatar;
 
   @override
   void initState() {
@@ -47,6 +50,31 @@ class _ChatScreenState extends State<ChatScreen> {
         }
       });
     });
+
+    _loadUserAvatars();
+  }
+
+  Future<void> _loadUserAvatars() async {
+    try {
+      // Load friend's profile
+      final friendProfile = await http.get(
+        Uri.parse('${Config.apiBaseUrl}/api/users/profile/${widget.friendId}')
+      );
+      
+      // Load my profile
+      final myProfile = await http.get(
+        Uri.parse('${Config.apiBaseUrl}/api/users/profile/${widget.userId}')
+      );
+
+      if (mounted) {
+        setState(() {
+          friendAvatar = jsonDecode(friendProfile.body)['avatar'];
+          myAvatar = jsonDecode(myProfile.body)['avatar'];
+        });
+      }
+    } catch (e) {
+      print('Error loading avatars: $e');
+    }
   }
 
   Future<void> _loadMessages() async {
@@ -146,6 +174,52 @@ class _ChatScreenState extends State<ChatScreen> {
   void dispose() {
     chatService.dispose();
     super.dispose();
+  }
+
+  Widget _buildAvatar(String? avatarUrl, bool isCurrentUser) {
+    if (avatarUrl != null && avatarUrl.isNotEmpty) {
+      return Padding(
+        padding: EdgeInsets.only(
+          left: isCurrentUser ? 4.0 : 8.0,
+          right: isCurrentUser ? 8.0 : 4.0,
+        ),
+        child: CachedNetworkImage(
+          imageUrl: avatarUrl,
+          imageBuilder: (context, imageProvider) => CircleAvatar(
+            backgroundImage: imageProvider,
+            radius: 20,
+          ),
+          placeholder: (context, url) => CircleAvatar(
+            backgroundColor: isCurrentUser 
+              ? Color.fromARGB(255, 3, 62, 72)
+              : Colors.grey,
+            radius: 20,
+            child: Icon(Icons.person, color: Colors.white, size: 20),
+          ),
+          errorWidget: (context, url, error) => CircleAvatar(
+            backgroundColor: isCurrentUser 
+              ? Color.fromARGB(255, 3, 62, 72)
+              : Colors.grey,
+            radius: 20,
+            child: Icon(Icons.person, color: Colors.white, size: 20),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: EdgeInsets.only(
+        left: isCurrentUser ? 4.0 : 8.0,
+        right: isCurrentUser ? 8.0 : 4.0,
+      ),
+      child: CircleAvatar(
+        backgroundColor: isCurrentUser 
+          ? Color.fromARGB(255, 3, 62, 72)
+          : Colors.grey,
+        radius: 20,
+        child: Icon(Icons.person, color: Colors.white, size: 20),
+      ),
+    );
   }
 
   Widget _buildMessageContent(Map<String, String> message) {
@@ -399,35 +473,11 @@ class _ChatScreenState extends State<ChatScreen> {
                           children: [
                             // Avatar cho người gửi khác
                             if (!isCurrentUser)
-                              const Padding(
-                                padding: EdgeInsets.only(left: 8.0, right: 4.0),
-                                child: CircleAvatar(
-                                  backgroundColor:
-                                      Colors.grey, // Màu xám cho avatar
-                                  radius: 20, // Kích thước avatar
-                                  child: Icon(
-                                    Icons.person, // Biểu tượng người dùng
-                                    color: Colors.white, // Màu icon
-                                    size: 20, // Kích thước icon
-                                  ),
-                                ),
-                              ),
+                              _buildAvatar(friendAvatar, false),
                             // Bong bóng tin nhắn
                             Flexible(child: _buildMessageContent(message)),
                             if (isCurrentUser)
-                              const Padding(
-                                padding: EdgeInsets.only(left: 4.0, right: 8.0),
-                                child: CircleAvatar(
-                                  backgroundColor: Color.fromARGB(
-                                      255, 3, 62, 72), // Màu xanh cho avatar
-                                  radius: 20, // Kích thước avatar
-                                  child: Icon(
-                                    Icons.person, // Biểu tượng người dùng
-                                    color: Colors.white, // Màu icon
-                                    size: 20, // Kích thước icon
-                                  ),
-                                ),
-                              ),
+                              _buildAvatar(myAvatar, true),
                           ],
                         ),
                       );
