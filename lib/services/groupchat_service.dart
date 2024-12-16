@@ -53,8 +53,9 @@ class GroupChatService {
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
-        _currentMessages = data.map((msg) {
+        final data = jsonDecode(response.body);
+        final List<dynamic> messages = data['messages']; // Get messages array from response
+        _currentMessages = messages.map((msg) {
           return {
             'id': msg['_id'],
             'sender': msg['sender']['username'],
@@ -62,7 +63,7 @@ class GroupChatService {
             'timestamp': msg['timestamp'],
             'senderId': msg['sender']['_id'],
             'isRecalled': msg['isRecalled'] ?? false,
-            'type': msg['type'] ?? 'text', // Add type field
+            'type': msg['type'] ?? 'text',
           };
         }).toList();
 
@@ -74,6 +75,42 @@ class GroupChatService {
       }
     } catch (e) {
       print('Error loading messages: $e');
+    }
+  }
+
+  Future<MessagePage> loadMoreMessages(int page, int limit) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/groups/group-messages/$groupId?page=$page&limit=$limit'),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final List<Map<String, dynamic>> newMessages = (data['messages'] as List)
+            .map((msg) => {
+                  'id': msg['_id'],
+                  'senderId': msg['sender']['_id'],
+                  'sender': msg['sender']['username'],
+                  'message': msg['message'],
+                  'timestamp': msg['timestamp'],
+                  'isRecalled': msg['isRecalled'] ?? false,
+                  'type': msg['type'] ?? 'text',
+                })
+            .toList();
+
+        _currentMessages = [...newMessages, ..._currentMessages];
+        _messagesgroupStreamController.add(_currentMessages);
+        
+        return MessagePage(
+          messages: newMessages,
+          currentPage: data['currentPage'],
+          totalPages: data['totalPages'],
+        );
+      }
+      throw Exception('Failed to load messages');
+    } catch (e) {
+      print('Error loading more messages: $e');
+      rethrow;
     }
   }
 
@@ -175,4 +212,16 @@ class GroupChatService {
     }
     _recallStreamController.close();
   }
+}
+
+class MessagePage {
+  final List<Map<String, dynamic>> messages;
+  final int currentPage;
+  final int totalPages;
+
+  MessagePage({
+    required this.messages,
+    required this.currentPage,
+    required this.totalPages,
+  });
 }

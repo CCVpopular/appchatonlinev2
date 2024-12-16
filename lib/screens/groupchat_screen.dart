@@ -29,11 +29,18 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   String? groupName;
   Map<String, String> userAvatars = {};  // Add this line to store user avatars
 
+  // Add these variables
+  bool _isLoadingMore = false;
+  bool _hasMoreMessages = true;
+  int _currentPage = 1;
+  final int _messagesPerPage = 20;
+  bool _shouldAutoScroll = true;  // Add this flag
+
   @override
   void initState() {
     super.initState();
     groupChatService = GroupChatService(widget.groupId);
-
+    _setupScrollController();
     // Add recall listener
     groupChatService.recallStream.listen((messageId) {
       setState(() {
@@ -46,6 +53,43 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
 
     _loadGroupInfo();
     _loadMemberAvatars();  // Add this line
+  }
+
+  void _setupScrollController() {
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels == 0 && !_isLoadingMore && _hasMoreMessages) {
+        _loadMoreMessages();
+      }
+    });
+  }
+
+  Future<void> _loadMoreMessages() async {
+    if (_isLoadingMore) return;
+
+    setState(() {
+      _isLoadingMore = true;
+      _shouldAutoScroll = false;  // Disable auto-scroll when loading more
+    });
+
+    try {
+      final result = await groupChatService.loadMoreMessages(_currentPage + 1, _messagesPerPage);
+      
+      setState(() {
+        _hasMoreMessages = _currentPage < result.totalPages;
+        if (_hasMoreMessages) {
+          _currentPage++;
+        }
+      });
+    } catch (e) {
+      print('Error loading more messages: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading messages')),
+      );
+    } finally {
+      setState(() {
+        _isLoadingMore = false;
+      });
+    }
   }
 
   Future<void> _loadGroupInfo() async {
@@ -133,6 +177,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
 
   void _sendMessage() {
     if (_controller.text.isNotEmpty) {
+      _shouldAutoScroll = true;  // Enable auto-scroll for new messages
       groupChatService.sendMessage(widget.userId, _controller.text);
       _controller.clear();
       // Scroll to bottom after sending
@@ -466,18 +511,27 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                 final messages = snapshot.data!;
                 _currentMessages = messages;
                 
-                // Auto scroll when entering page or new messages arrive
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (_scrollController.hasClients) {
-                    _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
-                  }
-                });
+                // Only auto scroll for new messages, not when loading old ones
+                if (_shouldAutoScroll) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (_scrollController.hasClients) {
+                      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+                    }
+                  });
+                }
                 
                 return ListView.builder(
                   controller: _scrollController,  // Add scroll controller here
-                  itemCount: messages.length,
+                  itemCount: messages.length + (_hasMoreMessages ? 1 : 0),
                   itemBuilder: (context, index) {
-                    final message = messages[index];
+                    if (index == 0 && _hasMoreMessages) {
+                      return _buildLoadingIndicator();
+                    }
+                    
+                    final messageIndex = _hasMoreMessages ? index - 1 : index;
+                    if (messageIndex >= messages.length) return null;
+                    
+                    final message = messages[messageIndex];
                     return Row(
                       mainAxisAlignment: message['senderId'] == widget.userId
                           ? MainAxisAlignment.end
@@ -521,6 +575,20 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildLoadingIndicator() {
+    return Container(
+      padding: EdgeInsets.symmetric(vertical: 8),
+      child: Center(
+        child: _isLoadingMore
+            ? CircularProgressIndicator()
+            : TextButton(
+                onPressed: _loadMoreMessages,
+                child: Text('Load more messages'),
+              ),
       ),
     );
   }

@@ -120,14 +120,24 @@ router.get('/user-groups/:userId', async (req, res) => {
   // Lấy tin nhắn của nhóm
 router.get('/group-messages/:groupId', async (req, res) => {
   const { groupId } = req.params;
+  const { page = 1, limit = 20 } = req.query;
 
   try {
     const messages = await GroupMessage.find({ groupId })
-      .populate('sender', 'username') // Lấy tên người gửi
-      .sort({ timestamp: 1 }) // Sắp xếp tin nhắn theo thời gian
-      .select('message sender timestamp isRecalled type'); // Add type to selection
+      .populate('sender', 'username')
+      .sort({ timestamp: -1 }) // Sort in descending order (newest first)
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit))
+      .select('message sender timestamp isRecalled type');
 
-    res.send(messages);
+    const totalMessages = await GroupMessage.countDocuments({ groupId });
+
+    res.send({
+      messages: messages.reverse(), // Reverse back to ascending order
+      totalMessages,
+      currentPage: parseInt(page),
+      totalPages: Math.ceil(totalMessages / limit)
+    });
   } catch (err) {
     console.error('Error fetching group messages:', err);
     res.status(500).send({ error: 'Failed to fetch group messages' });
