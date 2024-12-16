@@ -2,11 +2,31 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const admin = require('firebase-admin');
+const { RtcTokenBuilder, RtcRole } = require('agora-access-token');
 
 // Test route to verify the router is working
 router.get('/test', (req, res) => {
   res.json({ message: 'Notification routes are working' });
 });
+
+const generateAgoraToken = (channelName) => {
+  const appId = 'a4071bedee5f48ea91a1bed0a3bb7486';
+  const appCertificate = 'a6f0c1accdab4aca9ca9a4c7d341d2e3'; // Get this from Agora Console
+  const uid = 0;
+  const role = RtcRole.PUBLISHER;
+  const expirationTimeInSeconds = 3600;
+  const currentTimestamp = Math.floor(Date.now() / 1000);
+  const privilegeExpiredTs = currentTimestamp + expirationTimeInSeconds;
+
+  return RtcTokenBuilder.buildTokenWithUid(
+    appId,
+    appCertificate,
+    channelName,
+    uid,
+    role,
+    privilegeExpiredTs
+  );
+};
 
 // Video call notification endpoint
 router.post('/call', async (req, res) => {
@@ -31,6 +51,9 @@ router.post('/call', async (req, res) => {
     // Create channel name
     const channelName = [callerId, receiverId].sort().join('_');
 
+    // Generate Agora token
+    const agoraToken = generateAgoraToken(channelName);
+
     // Create notification payload
     const payload = {
       token: receiver.fcmToken,
@@ -39,6 +62,7 @@ router.post('/call', async (req, res) => {
         callerId: callerId,
         callerName: caller ? caller.username : 'Unknown',
         channelName: channelName,
+        token: agoraToken,
       },
       notification: {
         title: 'Incoming Video Call',
@@ -60,6 +84,7 @@ router.post('/call', async (req, res) => {
     res.json({ 
       success: true, 
       channelName,
+      token: agoraToken,
       messageId: response 
     });
   } catch (error) {

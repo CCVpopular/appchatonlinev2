@@ -24,6 +24,7 @@ class CallScreen extends StatefulWidget {
 class _CallScreenState extends State<CallScreen> {
   final CallService _callService = CallService();
   bool _isInCall = false;
+  int? _remoteUid; // Add this to track remote user
 
   @override
   void initState() {
@@ -32,9 +33,38 @@ class _CallScreenState extends State<CallScreen> {
   }
 
   Future<void> _initializeCall() async {
-    await _callService.initializeAgora();
-    await _callService.joinCall(widget.channelName, widget.token);
-    setState(() => _isInCall = true);
+    try {
+      await _callService.initializeAgora();
+
+      // Set up event handlers
+      _callService.engine?.registerEventHandler(RtcEngineEventHandler(
+        onJoinChannelSuccess: (connection, elapsed) {
+          print("Local user joined channel");
+          setState(() => _isInCall = true);
+        },
+        onUserJoined: (connection, remoteUid, elapsed) {
+          print("Remote user joined: $remoteUid");
+          setState(() => _remoteUid = remoteUid);
+        },
+        onUserOffline: (connection, remoteUid, reason) {
+          print("Remote user left: $remoteUid");
+          setState(() => _remoteUid = null);
+          _endCall(); // Automatically end call when remote user leaves
+        },
+      ));
+
+      await _callService.joinCall(widget.channelName, widget.token);
+    } catch (e) {
+      print("Error initializing call: $e");
+      _handleError();
+    }
+  }
+
+  void _handleError() {
+    _endCall();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Failed to join call')),
+    );
   }
 
   Future<void> _endCall() async {
@@ -58,55 +88,86 @@ class _CallScreenState extends State<CallScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          if (_isInCall)
-            AgoraVideoView(
-              controller: VideoViewController(
-                rtcEngine: _callService.engine!,
-                canvas: const VideoCanvas(uid: 0),
+    return WillPopScope(
+      onWillPop: () async {
+        await _endCall();
+        return true;
+      },
+      child: Scaffold(
+        body: Stack(
+          children: [
+            // Main view (local user)
+            if (_isInCall) ...[
+              AgoraVideoView(
+                controller: VideoViewController(
+                  rtcEngine: _callService.engine!,
+                  canvas: const VideoCanvas(uid: 0),
+                ),
+              ),
+              // Remote user view
+              if (_remoteUid != null)
+                Positioned(
+                  top: 10,
+                  right: 10,
+                  width: 120,
+                  height: 160,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.white, width: 1),
+                    ),
+                    child: AgoraVideoView(
+                      controller: VideoViewController.remote(
+                        rtcEngine: _callService.engine!,
+                        canvas: VideoCanvas(uid: _remoteUid),
+                        connection: const RtcConnection(channelId: ''),
+                      ),
+                    ),
+                  ),
+                ),
+            ] else
+              const Center(child: CircularProgressIndicator()),
+
+            // Controls overlay
+            Positioned(
+              bottom: 40,
+              left: 0,
+              right: 0,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildControlButton(
+                    icon: _callService.isMicOn ? Icons.mic : Icons.mic_off,
+                    onPressed: () {
+                      _callService.toggleMicrophone();
+                      setState(() {});
+                    },
+                  ),
+                  _buildControlButton(
+                    icon: Icons.call_end,
+                    color: Colors.red,
+                    onPressed: _endCall, // Use the new method
+                  ),
+                  _buildControlButton(
+                    icon: _callService.isCameraOn
+                        ? Icons.videocam
+                        : Icons.videocam_off,
+                    onPressed: () {
+                      _callService.toggleCamera();
+                      setState(() {});
+                    },
+                  ),
+                  _buildControlButton(
+                    icon: Icons.switch_camera,
+                    onPressed: () {
+                      _callService.switchCamera();
+                      setState(() {});
+                    },
+                  ),
+                ],
               ),
             ),
-          Positioned(
-            bottom: 40,
-            left: 0,
-            right: 0,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildControlButton(
-                  icon: _callService.isMicOn ? Icons.mic : Icons.mic_off,
-                  onPressed: () {
-                    _callService.toggleMicrophone();
-                    setState(() {});
-                  },
-                ),
-                _buildControlButton(
-                  icon: Icons.call_end,
-                  color: Colors.red,
-                  onPressed: _endCall, // Use the new method
-                ),
-                _buildControlButton(
-                  icon: _callService.isCameraOn
-                      ? Icons.videocam
-                      : Icons.videocam_off,
-                  onPressed: () {
-                    _callService.toggleCamera();
-                    setState(() {});
-                  },
-                ),
-                _buildControlButton(
-                  icon: Icons.switch_camera,
-                  onPressed: () {
-                    _callService.switchCamera();
-                    setState(() {});
-                  },
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

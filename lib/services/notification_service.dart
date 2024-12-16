@@ -11,7 +11,6 @@ class NotificationService {
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
   final String baseUrl = Config.apiBaseUrl;
 
-
   Future<void> init(String userId, {BuildContext? context}) async {
     await _firebaseMessaging.requestPermission(
       alert: true,
@@ -45,6 +44,15 @@ class NotificationService {
   void _handleIncomingCall(RemoteMessage message, BuildContext? context) {
     if (context == null) return;
 
+    // Check if required data exists
+    final String? token = message.data['token'];
+    final String? channelName = message.data['channelName'];
+
+    if (token == null || channelName == null) {
+      print('Missing required call data: token or channelName');
+      return;
+    }
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -56,8 +64,8 @@ class NotificationService {
             context,
             MaterialPageRoute(
               builder: (context) => CallScreen(
-                channelName: message.data['channelName'],
-                token: '',
+                channelName: channelName,
+                token: token,
                 isOutgoing: false,
                 onCallEnded: () {
                   // Handle call ended
@@ -68,7 +76,7 @@ class NotificationService {
         },
         onDecline: () {
           Navigator.pop(context);
-          _rejectCall(message.data['callerId']);
+          _rejectCall(message.data['callerId'] ?? '');
         },
       ),
     );
@@ -78,7 +86,8 @@ class NotificationService {
     // Implement call rejection logic here
     // You could send a notification back to the caller
     try {
-      final url = Uri.parse('${Config.apiBaseUrl}/api/notifications/reject-call');
+      final url =
+          Uri.parse('${Config.apiBaseUrl}/api/notifications/reject-call');
       await http.post(
         url,
         headers: {'Content-Type': 'application/json'},

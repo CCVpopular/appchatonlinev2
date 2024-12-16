@@ -121,11 +121,9 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _initiateCall() async {
     try {
-      chatService.sendMessage("📞 Calling..."); // Updated call message
+      chatService.sendMessage("📞 Calling...");
 
       final url = Uri.parse('${Config.apiBaseUrl}/api/notifications/call');
-      print('Initiating call to URL: $url');
-      
       final response = await http.post(
         url,
         headers: {
@@ -139,20 +137,17 @@ class _ChatScreenState extends State<ChatScreen> {
         }),
       );
 
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
-
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
         if (responseData['success'] == true) {
           if (!mounted) return;
-          
+
           await Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => CallScreen(
                 channelName: responseData['channelName'],
-                token: '',
+                token: responseData['token'], // Use the token from server
                 isOutgoing: true,
                 onCallEnded: () {
                   chatService.sendMessage("📞 Call ended");
@@ -167,13 +162,13 @@ class _ChatScreenState extends State<ChatScreen> {
           throw Exception('Call failed: ${responseData['error']}');
         }
       } else {
-        throw Exception('Server error: ${response.statusCode}\n${response.body}');
+        throw Exception('Server error: ${response.statusCode}');
       }
     } catch (e) {
       chatService.sendMessage("📞 Call failed");
       print('Call error: $e');
       if (!mounted) return;
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Call failed: $e'),

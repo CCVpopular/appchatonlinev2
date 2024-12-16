@@ -20,17 +20,36 @@ class CallService {
   }
 
   Future<void> joinCall(String channelName, String token) async {
-    await _engine.joinChannel(
-      token: token,
-      channelId: channelName,
-      uid: 0,
-      options: const ChannelMediaOptions(),
-    );
+    try {
+      await _engine.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
+      await _engine.enableVideo();
+      await _engine.startPreview();
+      
+      ChannelMediaOptions options = const ChannelMediaOptions(
+        clientRoleType: ClientRoleType.clientRoleBroadcaster,
+        channelProfile: ChannelProfileType.channelProfileCommunication,
+      );
+
+      await _engine.joinChannel(
+        token: token,
+        channelId: channelName,
+        uid: 0,
+        options: options,
+      );
+    } catch (e) {
+      print('Error joining call: $e');
+      throw e;
+    }
   }
 
   Future<void> leaveCall() async {
-    await _engine.leaveChannel();
-    await _engine.release();
+    try {
+      await _engine.leaveChannel();
+      await _engine.stopPreview();
+      await _engine.release();
+    } catch (e) {
+      print('Error leaving call: $e');
+    }
   }
 
   Future<void> toggleCamera() async {
