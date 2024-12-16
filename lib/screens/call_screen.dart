@@ -4,13 +4,17 @@ import '../services/call_service.dart';
 
 class CallScreen extends StatefulWidget {
   final String channelName;
-  final String token; 
+  final String token;
   final bool isOutgoing;
+  final VoidCallback? onCallEnded; // Add callback
+  final VoidCallback? onCallRejected; // Add rejection callback
 
   const CallScreen({
     required this.channelName,
     required this.token,
     this.isOutgoing = true,
+    this.onCallEnded,
+    this.onCallRejected,
   });
 
   @override
@@ -31,6 +35,25 @@ class _CallScreenState extends State<CallScreen> {
     await _callService.initializeAgora();
     await _callService.joinCall(widget.channelName, widget.token);
     setState(() => _isInCall = true);
+  }
+
+  Future<void> _endCall() async {
+    await _callService.leaveCall();
+    if (widget.onCallEnded != null) {
+      widget.onCallEnded!();
+    }
+    if (mounted) {
+      Navigator.pop(context);
+    }
+  }
+
+  void _handleCallRejected() {
+    if (widget.onCallRejected != null) {
+      widget.onCallRejected!();
+    }
+    if (mounted) {
+      Navigator.pop(context);
+    }
   }
 
   @override
@@ -62,10 +85,7 @@ class _CallScreenState extends State<CallScreen> {
                 _buildControlButton(
                   icon: Icons.call_end,
                   color: Colors.red,
-                  onPressed: () async {
-                    await _callService.leaveCall();
-                    Navigator.pop(context);
-                  },
+                  onPressed: _endCall, // Use the new method
                 ),
                 _buildControlButton(
                   icon: _callService.isCameraOn

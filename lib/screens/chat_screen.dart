@@ -7,6 +7,7 @@ import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:http/http.dart' as http;
 import '../services/chat_service.dart';
+import '../services/notification_service.dart';
 import 'call_screen.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -55,6 +56,9 @@ class _ChatScreenState extends State<ChatScreen> {
         }
       });
     });
+
+    // Initialize notification service with context
+    NotificationService().init(widget.userId, context: context);
   }
 
   Future<void> _loadMessages() async {
@@ -117,6 +121,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _initiateCall() async {
     try {
+      chatService.sendMessage("📞 Calling..."); // Updated call message
+
       final url = Uri.parse('${Config.apiBaseUrl}/api/notifications/call');
       print('Initiating call to URL: $url');
       
@@ -148,6 +154,12 @@ class _ChatScreenState extends State<ChatScreen> {
                 channelName: responseData['channelName'],
                 token: '',
                 isOutgoing: true,
+                onCallEnded: () {
+                  chatService.sendMessage("📞 Call ended");
+                },
+                onCallRejected: () {
+                  chatService.sendMessage("📞 Call was declined");
+                },
               ),
             ),
           );
@@ -158,6 +170,7 @@ class _ChatScreenState extends State<ChatScreen> {
         throw Exception('Server error: ${response.statusCode}\n${response.body}');
       }
     } catch (e) {
+      chatService.sendMessage("📞 Call failed");
       print('Call error: $e');
       if (!mounted) return;
       
