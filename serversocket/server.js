@@ -2,15 +2,17 @@ const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const mongoose = require('mongoose');
-const authRoutes = require('./routes/authRoutes');
-const friendRoutes = require('./routes/friendRoutes');
-const messageRoutes = require('./routes/messageRoutes');
+
 const Message = require('./models/Message');
 const GroupMessage = require('./models/GroupMessage');
 const User = require('./models/User');
-const GroupRoutes = require('./routes/groupRoutes')
 const Group = require('./models/Group');
-const userRoutes = require('./routes/userRoutes')
+
+const authRoutes = require('./routes/authRoutes');
+const friendRoutes = require('./routes/friendRoutes');
+const messageRoutes = require('./routes/messageRoutes');
+const groupRoutes = require('./routes/groupRoutes');
+const userRoutes = require('./routes/userRoutes');
 
 const { google } = require('googleapis');
 const multer = require('multer');
@@ -152,7 +154,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/friends', friendRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/groups', GroupRoutes);
+app.use('/api/groups', groupRoutes);
 
 io.on('connection', (socket) => {
   console.log('New client connected');
