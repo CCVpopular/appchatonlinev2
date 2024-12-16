@@ -6,9 +6,31 @@ import 'screens/manage_users_screen.dart';
 import 'package:flutter/services.dart';
 import 'services/startup_service.dart';
 import 'screens/loading_screen.dart';
+import 'package:awesome_notifications/awesome_notifications.dart';
 
-void main() {
+Future<void> initNotifications() async {
+  await AwesomeNotifications().initialize(
+    null,
+    [
+      NotificationChannel(
+        channelKey: 'call_channel',
+        channelName: 'Call Notifications',
+        channelDescription: 'Notification channel for calls',
+        defaultColor: Colors.purple,
+        ledColor: Colors.white,
+        importance: NotificationImportance.High,
+        channelShowBadge: true,
+        locked: true,
+        defaultRingtoneType: DefaultRingtoneType.Ringtone,
+      ),
+    ],
+    debug: true,
+  );
+}
+
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initNotifications();
   
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   SystemChrome.setSystemUIOverlayStyle(

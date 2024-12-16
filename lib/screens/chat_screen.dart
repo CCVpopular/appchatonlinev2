@@ -1,8 +1,13 @@
+import 'dart:convert';
+
+import 'package:appchatonline/config/config.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:http/http.dart' as http;
 import '../services/chat_service.dart';
+import 'call_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   final String userId;
@@ -108,6 +113,61 @@ class _ChatScreenState extends State<ChatScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _initiateCall() async {
+    try {
+      final url = Uri.parse('${Config.apiBaseUrl}/api/notifications/call');
+      print('Initiating call to URL: $url');
+      
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: json.encode({
+          'receiverId': widget.friendId,
+          'callerId': widget.userId,
+          'type': 'video_call',
+        }),
+      );
+
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData['success'] == true) {
+          if (!mounted) return;
+          
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => CallScreen(
+                channelName: responseData['channelName'],
+                token: '',
+                isOutgoing: true,
+              ),
+            ),
+          );
+        } else {
+          throw Exception('Call failed: ${responseData['error']}');
+        }
+      } else {
+        throw Exception('Server error: ${response.statusCode}\n${response.body}');
+      }
+    } catch (e) {
+      print('Call error: $e');
+      if (!mounted) return;
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Call failed: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
@@ -237,6 +297,12 @@ class _ChatScreenState extends State<ChatScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Chat'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.video_call),
+            onPressed: _initiateCall,
+          ),
+        ],
         backgroundColor: Colors.transparent, // Màu của AppBar
         elevation: 4.0, // Tạo hiệu ứng đổ bóng cho AppBar
         flexibleSpace: Container(

@@ -3,12 +3,17 @@ const router = express.Router();
 const User = require('../models/User');
 const admin = require('firebase-admin');
 
+// Test route to verify the router is working
+router.get('/test', (req, res) => {
+  res.json({ message: 'Notification routes are working' });
+});
+
+// Video call notification endpoint
 router.post('/call', async (req, res) => {
   try {
-    console.log('Received call notification request:', req.body);
+    console.log('Received call request:', req.body);
     const { receiverId, callerId, type } = req.body;
 
-    // Validate input
     if (!receiverId || !callerId) {
       return res.status(400).json({ error: 'Missing required parameters' });
     }
@@ -23,6 +28,9 @@ router.post('/call', async (req, res) => {
       return res.status(404).json({ error: 'Receiver not found or has no FCM token' });
     }
 
+    // Create channel name
+    const channelName = [callerId, receiverId].sort().join('_');
+
     // Create notification payload
     const payload = {
       token: receiver.fcmToken,
@@ -30,7 +38,7 @@ router.post('/call', async (req, res) => {
         type: 'video_call',
         callerId: callerId,
         callerName: caller ? caller.username : 'Unknown',
-        channelName: [callerId, receiverId].sort().join('_'),
+        channelName: channelName,
       },
       notification: {
         title: 'Incoming Video Call',
@@ -45,11 +53,15 @@ router.post('/call', async (req, res) => {
       },
     };
 
-    // Send notification
+    // Send FCM notification
     const response = await admin.messaging().send(payload);
     console.log('Call notification sent successfully:', response);
 
-    res.json({ success: true, messageId: response });
+    res.json({ 
+      success: true, 
+      channelName,
+      messageId: response 
+    });
   } catch (error) {
     console.error('Error sending call notification:', error);
     res.status(500).json({ error: error.message });

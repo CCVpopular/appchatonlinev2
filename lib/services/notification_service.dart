@@ -10,25 +10,43 @@ class NotificationService {
 
 
   Future<void> init(String userId) async {
-    // Yêu cầu quyền thông báo
-    await _firebaseMessaging.requestPermission();
+    await _firebaseMessaging.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+      provisional: false,
+    );
 
-    // Lấy FCM Token
     String? token = await _firebaseMessaging.getToken();
     print('FCM Token: $token');
 
-    // Gửi token đến server
     if (token != null) {
       await _sendTokenToServer(userId, token);
     }
 
-    // Lắng nghe thông báo khi ứng dụng đang mở
+    // Handle incoming call notifications when app is in foreground
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      if (message.notification != null) {
-        print('Notification Title: ${message.notification!.title}');
-        print('Notification Body: ${message.notification!.body}');
+      if (message.data['type'] == 'video_call') {
+        _handleIncomingCall(message);
       }
     });
+
+    // Handle call notifications when app is in background
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      if (message.data['type'] == 'video_call') {
+        _handleIncomingCall(message);
+      }
+    });
+  }
+
+  void _handleIncomingCall(RemoteMessage message) {
+    // You can implement call handling UI here
+    // For example, show a dialog with accept/reject options
+    print('Incoming call from: ${message.data['callerName']}');
+    print('Channel: ${message.data['channelName']}');
+    
+    // Here you can navigate to the CallScreen or show an incoming call UI
+    // You'll need to implement this based on your app's navigation structure
   }
 
   Future<void> _sendTokenToServer(String userId, String token) async {

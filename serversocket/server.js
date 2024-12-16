@@ -11,6 +11,7 @@ const User = require('./models/User');
 const GroupRoutes = require('./routes/groupRoutes')
 const Group = require('./models/Group');
 const userRoutes = require('./routes/userRoutes')
+const notificationRoutes = require('./routes/notificationRoutes')
 
 const { google } = require('googleapis');
 const multer = require('multer');
@@ -116,6 +117,13 @@ app.set('socketio', io);
 
 // Middleware
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Add console logging middleware to debug requests
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url}`);
+  next();
+});
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -123,6 +131,13 @@ app.use('/api/friends', friendRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/groups', GroupRoutes);
+app.use('/api/notifications', notificationRoutes);
+
+// Add error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  res.status(500).json({ error: err.message });
+});
 
 io.on('connection', (socket) => {
   console.log('New client connected');
