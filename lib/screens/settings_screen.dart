@@ -1,4 +1,6 @@
+import 'package:appchatonline/utils/preferences.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import 'login_screen.dart';
 
@@ -20,6 +22,8 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeNotifier = Provider.of<ValueNotifier<ThemeMode>>(context);
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Settings'),
@@ -37,6 +41,35 @@ class SettingsScreen extends StatelessWidget {
             Text('Username: $username'),
             Text('User ID: $userId'),
             SizedBox(height: 20),
+            Divider(),
+            ListTile(
+              leading: Icon(Icons.brightness_6),
+              title: Text('Theme'),
+              subtitle: Text('Select light or dark theme'),
+              trailing: DropdownButton<ThemeMode>(
+                value: themeNotifier.value,
+                items: [
+                  DropdownMenuItem(
+                    value: ThemeMode.light,
+                    child: Text('Light'),
+                  ),
+                  DropdownMenuItem(
+                    value: ThemeMode.dark,
+                    child: Text('Dark'),
+                  ),
+                  DropdownMenuItem(
+                    value: ThemeMode.system,
+                    child: Text('System'),
+                  ),
+                ],
+                onChanged: (mode) {
+                  if (mode != null) {
+                    themeNotifier.value = mode;
+                    Preferences.saveThemeMode(mode);
+                  }
+                },
+              ),
+            ),
             Divider(),
             ListTile(
               leading: Icon(Icons.logout, color: Colors.red),
