@@ -29,6 +29,10 @@ class _ChatScreenState extends State<ChatScreen> {
   String? friendAvatar;
   String? myAvatar;
   final ScrollController _scrollController = ScrollController();
+  int _currentPage = 1;
+  static const int _pageSize = 20;
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
 
   @override
   void initState() {
@@ -36,6 +40,7 @@ class _ChatScreenState extends State<ChatScreen> {
     messages.clear(); // Clear messages when initializing
     chatService = ChatService(widget.userId, widget.friendId);
 
+    _scrollController.addListener(_onScroll);
     // Load old messages
     _loadMessages();
 
@@ -53,6 +58,12 @@ class _ChatScreenState extends State<ChatScreen> {
     });
 
     _loadUserAvatars();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels == 0 && !_isLoadingMore && _hasMore) {
+      _loadMoreMessages();
+    }
   }
 
   Future<void> _loadUserAvatars() async {
@@ -80,25 +91,56 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _loadMessages() async {
     try {
-      final oldMessages = await chatService.loadMessages();
       setState(() {
-        // Clear existing messages before adding old ones
+        isLoading = true;
+      });
+
+      final result = await chatService.loadMessages(page: _currentPage, limit: _pageSize);
+      
+      setState(() {
         messages.clear();
-        messages.addAll(oldMessages);
+        messages.addAll(List<Map<String, String>>.from(result['messages']));
+        _hasMore = result['hasMore'];
         isLoading = false;
-        
-        // Auto scroll after loading messages
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (_scrollController.hasClients) {
-            _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
-          }
-        });
+      });
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController.hasClients) {
+          _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+        }
       });
     } catch (e) {
       setState(() {
         isLoading = false;
       });
       print('Error loading messages: $e');
+    }
+  }
+
+  Future<void> _loadMoreMessages() async {
+    if (_isLoadingMore) return;
+
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    try {
+      final result = await chatService.loadMessages(
+        page: _currentPage + 1,
+        limit: _pageSize,
+      );
+
+      setState(() {
+        _currentPage++;
+        messages.insertAll(0, List<Map<String, String>>.from(result['messages']));
+        _hasMore = result['hasMore'];
+        _isLoadingMore = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoadingMore = false;
+      });
+      print('Error loading more messages: $e');
     }
   }
 
@@ -182,6 +224,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     chatService.dispose();
     super.dispose();
@@ -477,9 +520,21 @@ class _ChatScreenState extends State<ChatScreen> {
                 ? Center(child: CircularProgressIndicator())
                 : ListView.builder(
                     controller: _scrollController,
-                    itemCount: messages.length,
+                    reverse: false,
+                    itemCount: messages.length + (_hasMore ? 1 : 0),
                     itemBuilder: (context, index) {
-                      final message = messages[index];
+                      if (index == 0 && _hasMore) {
+                        return Padding(
+                          padding: EdgeInsets.all(8.0),
+                          child: Center(
+                            child: _isLoadingMore
+                                ? CircularProgressIndicator()
+                                : Text('Pull to load more'),
+                          ),
+                        );
+                      }
+                      final actualIndex = _hasMore ? index - 1 : index;
+                      final message = messages[actualIndex];
                       final isCurrentUser = message['sender'] == widget.userId;
                       final isRecalled = message['isRecalled'] == 'true';
 
