@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'firebase_options.dart';
 import 'screens/login_screen.dart';
 import 'screens/manage_users_screen.dart';
 import 'package:flutter/services.dart';

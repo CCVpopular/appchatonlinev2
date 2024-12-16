@@ -99,7 +99,9 @@ router.get('/profile/:userId', async (req, res) => {
     }
     res.json(user);
   } catch (err) {
-    res.status(500).send({ error: 'Failed to get user profile' });
+        res.status(500).send({ error: 'Failed to get user profile' });
+      }
+    });
 // Get all users
 router.get('/', async (req, res) => {
   try {
