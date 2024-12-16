@@ -28,6 +28,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final ImagePicker _picker = ImagePicker();
   String? friendAvatar;
   String? myAvatar;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -85,6 +86,13 @@ class _ChatScreenState extends State<ChatScreen> {
         messages.clear();
         messages.addAll(oldMessages);
         isLoading = false;
+        
+        // Auto scroll after loading messages
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_scrollController.hasClients) {
+            _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+          }
+        });
       });
     } catch (e) {
       setState(() {
@@ -144,6 +152,8 @@ class _ChatScreenState extends State<ChatScreen> {
     if (_controller.text.isNotEmpty) {
       chatService.sendMessage(_controller.text);
       _controller.clear();
+      // Scroll to bottom after sending
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
     }
   }
 
@@ -172,6 +182,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    _scrollController.dispose();
     chatService.dispose();
     super.dispose();
   }
@@ -423,8 +434,20 @@ class _ChatScreenState extends State<ChatScreen> {
             messages.add(message);
           }
         }
+        // Scroll to bottom after setState
+        WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
       });
     });
+  }
+
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
   }
 
   @override
@@ -453,6 +476,7 @@ class _ChatScreenState extends State<ChatScreen> {
             child: isLoading
                 ? Center(child: CircularProgressIndicator())
                 : ListView.builder(
+                    controller: _scrollController,
                     itemCount: messages.length,
                     itemBuilder: (context, index) {
                       final message = messages[index];

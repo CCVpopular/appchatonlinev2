@@ -23,6 +23,7 @@ class GroupChatScreen extends StatefulWidget {
 class _GroupChatScreenState extends State<GroupChatScreen> {
   late GroupChatService groupChatService;
   final TextEditingController _controller = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   List<Map<String, dynamic>> _currentMessages = [];
   String? groupAvatar;
   String? groupName;
@@ -113,8 +114,19 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     }
   }
 
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
   @override
   void dispose() {
+    _scrollController.dispose();
     groupChatService.dispose();
     super.dispose();
   }
@@ -123,6 +135,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     if (_controller.text.isNotEmpty) {
       groupChatService.sendMessage(widget.userId, _controller.text);
       _controller.clear();
+      // Scroll to bottom after sending
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
     }
   }
 
@@ -451,7 +465,16 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
 
                 final messages = snapshot.data!;
                 _currentMessages = messages;
+                
+                // Auto scroll when entering page or new messages arrive
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (_scrollController.hasClients) {
+                    _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+                  }
+                });
+                
                 return ListView.builder(
+                  controller: _scrollController,  // Add scroll controller here
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
                     final message = messages[index];
