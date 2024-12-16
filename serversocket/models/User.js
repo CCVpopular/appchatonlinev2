@@ -7,6 +7,7 @@ const UserSchema = new mongoose.Schema({
   fcmToken: { type: String },
   status: { type: String, enum: ['active', 'inactive'], default: 'active' },
   avatar: { type: String, default: '' }, // URL to avatar image
+  role: { type: String, enum: ['user', 'admin'], default: 'user' },
 });
 
 module.exports = mongoose.model('User', UserSchema);

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:appchatonline/screens/home_screen.dart';
 import 'package:appchatonline/screens/register_screen.dart';
+import 'package:appchatonline/screens/admin_dashboard.dart'; // Add this line
 import 'package:flutter/material.dart';
 // import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
@@ -31,8 +32,9 @@ class _LoginScreenState extends State<LoginScreen> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          // builder: (context) => FriendsScreen(userId: loginState['userId']!),
-          builder: (context) => MyHomePage(userId: loginState['userId']!),
+          builder: (context) => loginState['role'] == 'admin' 
+            ? AdminDashboard(userId: loginState['userId']!)
+            : MyHomePage(userId: loginState['userId']!),
         ),
       );
     } else {
@@ -53,7 +55,8 @@ class _LoginScreenState extends State<LoginScreen> {
       // Lưu trạng thái đăng nhập nếu "Ghi nhớ đăng nhập" được chọn
       await authService.saveLoginState(
         user['userId'],
-        usernameController.text,
+        user['username'],
+        user['role'],
         rememberMe,
       );
       if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
@@ -66,8 +69,9 @@ class _LoginScreenState extends State<LoginScreen> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          // builder: (context) => FriendsScreen(userId: user['userId']),
-          builder: (context) => MyHomePage(userId: user['userId']),
+          builder: (context) => user['role'] == 'admin'
+            ? AdminDashboard(userId: user['userId'])
+            : MyHomePage(userId: user['userId']),
         ),
       );
     } catch (e) {
