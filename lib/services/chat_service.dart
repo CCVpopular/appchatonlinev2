@@ -89,16 +89,31 @@ class ChatService {
 
   Future<void> sendFile(File file, String fileName, String mimeType, {Function(double)? onProgress}) async {
     try {
-      _emitTemporaryMessage(fileName, 'file');
+      if (!file.existsSync()) {
+        throw Exception('File does not exist');
+      }
+
       final bytes = await file.readAsBytes();
+      if (bytes.length > 500 * 1024 * 1024) { // 500MB limit
+        throw Exception('File size exceeds 500MB limit');
+      }
+
+      _emitTemporaryMessage(fileName, 'file');
       final base64File = base64Encode(bytes);
 
-      socket.emit('sendFile', {
+      socket.emitWithAck('sendFile', {
         'sender': userId,
         'receiver': friendId,
         'fileData': base64File,
         'fileName': fileName,
         'fileType': mimeType,
+      }, ack: (data) {
+        // Handle acknowledgment here
+      });
+
+      // Add a longer timeout for larger files
+      Future.delayed(const Duration(minutes: 10), () {
+        throw Exception('Upload timeout');
       });
     } catch (e) {
       print('Error sending file: $e');

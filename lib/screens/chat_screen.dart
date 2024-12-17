@@ -181,16 +181,27 @@ class _ChatScreenState extends State<ChatScreen> {
             ? 'application/${result.files.single.extension}'
             : 'application/octet-stream';
         
+        // Check file size
+        int fileSize = await file.length();
+        if (fileSize > 500 * 1024 * 1024) { // 500MB limit
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('File size must be less than 500MB')),
+          );
+          return;
+        }
+        
         await chatService.sendFile(
           file, 
           fileName, 
           mimeType,
           onProgress: (progress) {
-            // Progress is now handled by the upload progress card
+            // Progress is handled by the upload progress card
           }
         );
       }
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error sending file: $e')),
       );
