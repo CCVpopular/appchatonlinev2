@@ -1,14 +1,16 @@
 import 'dart:convert';
-
 import 'package:appchatonline/config/config.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:http/http.dart' as http;
-import '../services/chat_service.dart';
 import '../services/notification_service.dart';
 import 'call_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../config/config.dart';
+import '../services/chat_service.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:http/http.dart' as http;
 
 class ChatScreen extends StatefulWidget {
   final String userId;
@@ -27,6 +29,13 @@ class _ChatScreenState extends State<ChatScreen> {
   final List<Map<String, String>> messages = [];
   bool isLoading = true;
   final ImagePicker _picker = ImagePicker();
+  String? friendAvatar;
+  String? myAvatar;
+  final ScrollController _scrollController = ScrollController();
+  int _currentPage = 1;
+  static const int _pageSize = 20;
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
 
   @override
   void initState() {
@@ -34,18 +43,12 @@ class _ChatScreenState extends State<ChatScreen> {
     messages.clear(); // Clear messages when initializing
     chatService = ChatService(widget.userId, widget.friendId);
 
+    _scrollController.addListener(_onScroll);
     // Load old messages
     _loadMessages();
 
     // Listen for new messages
-    chatService.messageStream.listen((message) {
-      setState(() {
-        // Check if message already exists to prevent duplicates
-        if (!messages.any((msg) => msg['id'] == message['id'])) {
-          messages.add(message);
-        }
-      });
-    });
+    _updateMessageStream();
 
     // Listen for message recalls
     chatService.recallStream.listen((messageId) {
@@ -59,16 +62,57 @@ class _ChatScreenState extends State<ChatScreen> {
 
     // Initialize notification service with context
     NotificationService().init(widget.userId, context: context);
+    _loadUserAvatars();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels == 0 && !_isLoadingMore && _hasMore) {
+      _loadMoreMessages();
+    }
+  }
+
+  Future<void> _loadUserAvatars() async {
+    try {
+      // Load friend's profile
+      final friendProfile = await http.get(
+        Uri.parse('${Config.apiBaseUrl}/api/users/profile/${widget.friendId}')
+      );
+      
+      // Load my profile
+      final myProfile = await http.get(
+        Uri.parse('${Config.apiBaseUrl}/api/users/profile/${widget.userId}')
+      );
+
+      if (mounted) {
+        setState(() {
+          friendAvatar = jsonDecode(friendProfile.body)['avatar'];
+          myAvatar = jsonDecode(myProfile.body)['avatar'];
+        });
+      }
+    } catch (e) {
+      print('Error loading avatars: $e');
+    }
   }
 
   Future<void> _loadMessages() async {
     try {
-      final oldMessages = await chatService.loadMessages();
       setState(() {
-        // Clear existing messages before adding old ones
+        isLoading = true;
+      });
+
+      final result = await chatService.loadMessages(page: _currentPage, limit: _pageSize);
+      
+      setState(() {
         messages.clear();
-        messages.addAll(oldMessages);
+        messages.addAll(List<Map<String, String>>.from(result['messages']));
+        _hasMore = result['hasMore'];
         isLoading = false;
+      });
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController.hasClients) {
+          _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+        }
       });
     } catch (e) {
       setState(() {
@@ -78,14 +122,76 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  Future<void> _loadMoreMessages() async {
+    if (_isLoadingMore) return;
+
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    try {
+      final result = await chatService.loadMessages(
+        page: _currentPage + 1,
+        limit: _pageSize,
+      );
+
+      setState(() {
+        _currentPage++;
+        messages.insertAll(0, List<Map<String, String>>.from(result['messages']));
+        _hasMore = result['hasMore'];
+        _isLoadingMore = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoadingMore = false;
+      });
+      print('Error loading more messages: $e');
+    }
+  }
+
   Future<void> _pickAndSendImage() async {
     try {
       final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
       if (image != null) {
-        await chatService.sendImage(File(image.path));
+        await chatService.sendImage(
+          File(image.path),
+          onProgress: (progress) {
+            // Progress is now handled by the upload progress card
+          }
+        );
       }
     } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error sending image: $e')),
+      );
       print('Error picking image: $e');
+    }
+  }
+
+  Future<void> _pickAndSendFile() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles();
+      if (result != null) {
+        File file = File(result.files.single.path!);
+        String fileName = result.files.single.name;
+        String? mimeType = result.files.single.extension != null 
+            ? 'application/${result.files.single.extension}'
+            : 'application/octet-stream';
+        
+        await chatService.sendFile(
+          file, 
+          fileName, 
+          mimeType,
+          onProgress: (progress) {
+            // Progress is now handled by the upload progress card
+          }
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error sending file: $e')),
+      );
+      print('Error picking file: $e');
     }
   }
 
@@ -93,6 +199,8 @@ class _ChatScreenState extends State<ChatScreen> {
     if (_controller.text.isNotEmpty) {
       chatService.sendMessage(_controller.text);
       _controller.clear();
+      // Scroll to bottom after sending
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
     }
   }
 
@@ -180,11 +288,96 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
     chatService.dispose();
     super.dispose();
   }
 
+  Widget _buildAvatar(String? avatarUrl, bool isCurrentUser) {
+    if (avatarUrl != null && avatarUrl.isNotEmpty) {
+      return Padding(
+        padding: EdgeInsets.only(
+          left: isCurrentUser ? 4.0 : 8.0,
+          right: isCurrentUser ? 8.0 : 4.0,
+        ),
+        child: CachedNetworkImage(
+          imageUrl: avatarUrl,
+          imageBuilder: (context, imageProvider) => CircleAvatar(
+            backgroundImage: imageProvider,
+            radius: 20,
+          ),
+          placeholder: (context, url) => CircleAvatar(
+            backgroundColor: isCurrentUser 
+              ? Color.fromARGB(255, 3, 62, 72)
+              : Colors.grey,
+            radius: 20,
+            child: Icon(Icons.person, color: Colors.white, size: 20),
+          ),
+          errorWidget: (context, url, error) => CircleAvatar(
+            backgroundColor: isCurrentUser 
+              ? Color.fromARGB(255, 3, 62, 72)
+              : Colors.grey,
+            radius: 20,
+            child: Icon(Icons.person, color: Colors.white, size: 20),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: EdgeInsets.only(
+        left: isCurrentUser ? 4.0 : 8.0,
+        right: isCurrentUser ? 8.0 : 4.0,
+      ),
+      child: CircleAvatar(
+        backgroundColor: isCurrentUser 
+          ? Color.fromARGB(255, 3, 62, 72)
+          : Colors.grey,
+        radius: 20,
+        child: Icon(Icons.person, color: Colors.white, size: 20),
+      ),
+    );
+  }
+
   Widget _buildMessageContent(Map<String, String> message) {
+    final isTemporary = message['isTemporary'] == 'true';
+    
+    if (isTemporary) {
+      return Container(
+        margin: const EdgeInsets.all(5.0),
+        padding: const EdgeInsets.all(12.0),
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.grey[300]!),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.grey[600]!),
+              ),
+            ),
+            SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                message['message'] ?? '',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     final isRecalled = message['isRecalled'] == 'true';
     final isImage = message['type'] == 'image';
     final timestamp = DateTime.parse(
@@ -270,6 +463,41 @@ class _ChatScreenState extends State<ChatScreen> {
           ],
         ),
       );
+    } else if (message['type'] == 'file') {
+      final fileInfo = jsonDecode(message['message']!);
+      return Container(
+        margin: const EdgeInsets.all(5.0),
+        padding: const EdgeInsets.all(12.0),
+        decoration: BoxDecoration(
+          color: message['sender'] == widget.userId
+              ? const Color.fromARGB(145, 130, 190, 197)
+              : Colors.grey[300],
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.file_present),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(fileInfo['fileName'],
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+            TextButton(
+              onPressed: () => launch(fileInfo['viewLink']),
+              child: Text('Open File'),
+            ),
+            Text(
+              timeStr,
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ],
+        ),
+      );
     } else {
       return Container(
         margin: const EdgeInsets.all(5.0),
@@ -296,6 +524,35 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ],
         ),
+      );
+    }
+  }
+
+  void _updateMessageStream() {
+    chatService.messageStream.listen((message) {
+      setState(() {
+        if (message['isTemporary'] == 'true') {
+          // Add temporary message
+          messages.add(message);
+        } else {
+          // Remove temporary message and add real message
+          messages.removeWhere((msg) => msg['isTemporary'] == 'true');
+          if (!messages.any((msg) => msg['id'] == message['id'])) {
+            messages.add(message);
+          }
+        }
+        // Scroll to bottom after setState
+        WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+      });
+    });
+  }
+
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
       );
     }
   }
@@ -332,9 +589,22 @@ class _ChatScreenState extends State<ChatScreen> {
             child: isLoading
                 ? Center(child: CircularProgressIndicator())
                 : ListView.builder(
-                    itemCount: messages.length,
+                    controller: _scrollController,
+                    reverse: false,
+                    itemCount: messages.length + (_hasMore ? 1 : 0),
                     itemBuilder: (context, index) {
-                      final message = messages[index];
+                      if (index == 0 && _hasMore) {
+                        return Padding(
+                          padding: EdgeInsets.all(8.0),
+                          child: Center(
+                            child: _isLoadingMore
+                                ? CircularProgressIndicator()
+                                : Text('Pull to load more'),
+                          ),
+                        );
+                      }
+                      final actualIndex = _hasMore ? index - 1 : index;
+                      final message = messages[actualIndex];
                       final isCurrentUser = message['sender'] == widget.userId;
                       final isRecalled = message['isRecalled'] == 'true';
 
@@ -352,35 +622,11 @@ class _ChatScreenState extends State<ChatScreen> {
                           children: [
                             // Avatar cho người gửi khác
                             if (!isCurrentUser)
-                              const Padding(
-                                padding: EdgeInsets.only(left: 8.0, right: 4.0),
-                                child: CircleAvatar(
-                                  backgroundColor:
-                                      Colors.grey, // Màu xám cho avatar
-                                  radius: 20, // Kích thước avatar
-                                  child: Icon(
-                                    Icons.person, // Biểu tượng người dùng
-                                    color: Colors.white, // Màu icon
-                                    size: 20, // Kích thước icon
-                                  ),
-                                ),
-                              ),
+                              _buildAvatar(friendAvatar, false),
                             // Bong bóng tin nhắn
                             Flexible(child: _buildMessageContent(message)),
                             if (isCurrentUser)
-                              const Padding(
-                                padding: EdgeInsets.only(left: 4.0, right: 8.0),
-                                child: CircleAvatar(
-                                  backgroundColor: Color.fromARGB(
-                                      255, 3, 62, 72), // Màu xanh cho avatar
-                                  radius: 20, // Kích thước avatar
-                                  child: Icon(
-                                    Icons.person, // Biểu tượng người dùng
-                                    color: Colors.white, // Màu icon
-                                    size: 20, // Kích thước icon
-                                  ),
-                                ),
-                              ),
+                              _buildAvatar(myAvatar, true),
                           ],
                         ),
                       );
@@ -394,6 +640,10 @@ class _ChatScreenState extends State<ChatScreen> {
                 IconButton(
                   icon: Icon(Icons.image),
                   onPressed: _pickAndSendImage,
+                ),
+                IconButton(
+                  icon: Icon(Icons.attach_file),
+                  onPressed: _pickAndSendFile,
                 ),
                 Expanded(
                   child: Container(

@@ -1,7 +1,7 @@
-import 'package:appchatonline/screens/chatbot_screen.dart';
-import 'package:appchatonline/screens/settings_screen.dart';
 import 'package:flutter/material.dart';
-
+import 'package:provider/provider.dart';
+import '../screens/chatbot_screen.dart';
+import '../screens/settings_screen.dart';
 import 'friends_screen.dart';
 import 'groups_screen.dart';
 
@@ -36,13 +36,11 @@ class _MyHomePageState extends State<MyHomePage> {
         page = SettingsScreen(username: "text", userId: widget.userId);
         break;
       default:
-        throw UnimplementedError('no widget for $selectedIndex');
+        throw UnimplementedError('No widget for $selectedIndex');
     }
 
-    // The container for the current page, with its background color
-    // and subtle switching animation.
     var mainArea = ColoredBox(
-      color: colorScheme.surfaceContainerHighest,
+      color: colorScheme.background, // Sử dụng màu nền từ theme
       child: AnimatedSwitcher(
         duration: Duration(milliseconds: 200),
         child: page,
@@ -77,13 +75,16 @@ class _MyHomePageState extends State<MyHomePage> {
                       ),
                     ],
                     currentIndex: selectedIndex,
+                    selectedItemColor: colorScheme.primary, // Áp dụng màu từ theme
+                    unselectedItemColor: colorScheme.onSurface.withOpacity(0.6),
+                    backgroundColor: colorScheme.surface, // Màu nền từ theme
                     onTap: (value) {
                       setState(() {
                         selectedIndex = value;
                       });
                     },
                   ),
-                )
+                ),
               ],
             );
           } else {
@@ -111,6 +112,9 @@ class _MyHomePageState extends State<MyHomePage> {
                       ),
                     ],
                     selectedIndex: selectedIndex,
+                    selectedIconTheme: IconThemeData(color: colorScheme.primary),
+                    unselectedIconTheme: IconThemeData(color: colorScheme.onSurface.withOpacity(0.6)),
+                    backgroundColor: colorScheme.surface,
                     onDestinationSelected: (value) {
                       setState(() {
                         selectedIndex = value;

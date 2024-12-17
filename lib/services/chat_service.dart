@@ -56,12 +56,24 @@ class ChatService {
     // Don't add message to stream here - wait for server response
   }
 
-  Future<void> sendImage(File imageFile) async {
+  void _emitTemporaryMessage(String fileName, String type) {
+    _messageStreamController.add({
+      'id': 'temp_${DateTime.now().millisecondsSinceEpoch}',
+      'sender': userId,
+      'message': 'Uploading $fileName...',
+      'type': type,
+      'isTemporary': 'true',
+      'timestamp': DateTime.now().toIso8601String(),
+    });
+  }
+
+  Future<void> sendImage(File imageFile, {Function(double)? onProgress}) async {
     try {
-      // Read and encode image
       final bytes = await imageFile.readAsBytes();
       final base64Image = base64Encode(bytes);
       final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
+
+      _emitTemporaryMessage(fileName, 'image');
 
       socket.emit('sendImage', {
         'sender': userId,
@@ -71,6 +83,26 @@ class ChatService {
       });
     } catch (e) {
       print('Error sending image: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> sendFile(File file, String fileName, String mimeType, {Function(double)? onProgress}) async {
+    try {
+      _emitTemporaryMessage(fileName, 'file');
+      final bytes = await file.readAsBytes();
+      final base64File = base64Encode(bytes);
+
+      socket.emit('sendFile', {
+        'sender': userId,
+        'receiver': friendId,
+        'fileData': base64File,
+        'fileName': fileName,
+        'fileType': mimeType,
+      });
+    } catch (e) {
+      print('Error sending file: $e');
+      rethrow;
     }
   }
 
@@ -94,22 +126,28 @@ class ChatService {
   }
 
   // Hàm lấy tin nhắn cũ
-  Future<List<Map<String, String>>> loadMessages() async {
-    final url = Uri.parse('${baseUrl}/api/messages/messages/$userId/$friendId');
+  Future<Map<String, dynamic>> loadMessages({int page = 1, int limit = 20}) async {
+    final url = Uri.parse('${baseUrl}/api/messages/messages/$userId/$friendId?page=$page&limit=$limit');
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
-        return data.map((msg) {
-          return {
-            'id': msg['_id'].toString(),
-            'sender': msg['sender'].toString(),
-            'message': msg['message'].toString(),
-            'type': msg['type']?.toString() ?? 'text',
-            'isRecalled': msg['isRecalled']?.toString() ?? 'false',
-            'timestamp': msg['timestamp']?.toString() ?? DateTime.now().toIso8601String(),
-          };
-        }).toList().cast<Map<String, String>>();
+        final Map<String, dynamic> data = jsonDecode(response.body);
+        final List<dynamic> messagesList = data['messages'];
+        
+        return {
+          'messages': messagesList.map((msg) {
+            return {
+              'id': msg['_id'].toString(),
+              'sender': msg['sender'].toString(),
+              'message': msg['message'].toString(),
+              'type': msg['type']?.toString() ?? 'text',
+              'isRecalled': msg['isRecalled']?.toString() ?? 'false',
+              'timestamp': msg['timestamp']?.toString() ?? DateTime.now().toIso8601String(),
+            };
+          }).toList(),
+          'hasMore': data['hasMore'],
+          'total': data['total'],
+        };
       } else {
         throw Exception('Failed to load messages: ${response.body}');
       }

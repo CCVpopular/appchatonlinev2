@@ -2,17 +2,16 @@ const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const mongoose = require('mongoose');
-const authRoutes = require('./routes/authRoutes');
-const friendRoutes = require('./routes/friendRoutes');
-const messageRoutes = require('./routes/messageRoutes');
 const Message = require('./models/Message');
 const GroupMessage = require('./models/GroupMessage');
 const User = require('./models/User');
-const GroupRoutes = require('./routes/groupRoutes')
 const Group = require('./models/Group');
-const userRoutes = require('./routes/userRoutes')
 const notificationRoutes = require('./routes/notificationRoutes')
-
+const authRoutes = require('./routes/authRoutes');
+const friendRoutes = require('./routes/friendRoutes');
+const messageRoutes = require('./routes/messageRoutes');
+const groupRoutes = require('./routes/groupRoutes');
+const userRoutes = require('./routes/userRoutes');
 const { google } = require('googleapis');
 const multer = require('multer');
 const path = require('path');
@@ -99,6 +98,36 @@ async function getGroupImageFolderId(baseFolder, groupId) {
   }
 }
 
+// Add after the getGroupImageFolderId function
+async function getFileFolderId(baseFolder, roomName) {
+  try {
+    const chatFolder = await findOrCreateFolder('chat', baseFolder);
+    const privateChatFolder = await findOrCreateFolder('private_chat', chatFolder);
+    const roomFolder = await findOrCreateFolder(roomName, privateChatFolder);
+    const fileChatFolder = await findOrCreateFolder('filechat', roomFolder);
+    
+    return fileChatFolder;
+  } catch (error) {
+    console.error('Error in getFileFolderId:', error);
+    throw error;
+  }
+}
+
+// Add after the getFileFolderId function
+async function getGroupFileFolderId(baseFolder, groupId) {
+  try {
+    const chatFolder = await findOrCreateFolder('chat', baseFolder);
+    const groupChatFolder = await findOrCreateFolder('group_chat', chatFolder);
+    const roomFolder = await findOrCreateFolder(groupId, groupChatFolder);
+    const fileChatFolder = await findOrCreateFolder('filechat', roomFolder);
+    
+    return fileChatFolder;
+  } catch (error) {
+    console.error('Error in getGroupFileFolderId:', error);
+    throw error;
+  }
+}
+
 // Multer setup for temporary file storage
 const upload = multer({
   dest: 'temp/',
@@ -130,10 +159,10 @@ app.use('/api/auth', authRoutes);
 app.use('/api/friends', friendRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/groups', GroupRoutes);
 app.use('/api/notifications', notificationRoutes);
-
+app.use('/api/groups', groupRoutes);
 // Add error handling middleware
+
 app.use((err, req, res, next) => {
   console.error('Error:', err);
   res.status(500).json({ error: err.message });
@@ -332,6 +361,131 @@ io.on('connection', (socket) => {
 
     } catch (err) {
       console.error('Error handling group image upload:', err);
+    }
+  });
+
+  socket.on('sendFile', async (data) => {
+    try {
+      const { sender, receiver, fileData, fileName, fileType } = data;
+      const tempPath = path.join(__dirname, 'temp', fileName);
+      
+      // Save base64 file to temp storage
+      fs.writeFileSync(tempPath, Buffer.from(fileData, 'base64'));
+
+      // Get room-specific folder ID
+      const roomName = [sender, receiver].sort().join('_');
+      const baseFolderId = '1uoKXq4MXKEpEMT3_Fwdtttm84AIpq-h0'; // Your base folder ID
+      const roomFolderId = await getFileFolderId(baseFolderId, roomName);
+
+      // Upload to Google Drive
+      const fileMetadata = {
+        name: fileName,
+        parents: [roomFolderId]
+      };
+
+      const media = {
+        mimeType: fileType,
+        body: fs.createReadStream(tempPath)
+      };
+
+      const driveResponse = await drive.files.create({
+        resource: fileMetadata,
+        media: media,
+        fields: 'id, webViewLink'
+      });
+
+      // Save message with file info
+      const newMessage = new Message({
+        sender,
+        receiver,
+        message: JSON.stringify({
+          fileName,
+          fileId: driveResponse.data.id,
+          viewLink: driveResponse.data.webViewLink
+        }),
+        type: 'file'
+      });
+      await newMessage.save();
+
+      // Emit to room
+      io.to(roomName).emit('receiveMessage', {
+        _id: newMessage._id,
+        sender,
+        receiver,
+        message: newMessage.message,
+        type: 'file',
+        timestamp: newMessage.timestamp
+      });
+
+      // Cleanup temp file
+      fs.unlinkSync(tempPath);
+
+    } catch (err) {
+      console.error('Error handling file upload:', err);
+    }
+  });
+
+  socket.on('sendGroupFile', async (data) => {
+    try {
+      const { groupId, sender, fileData, fileName, fileType } = data;
+      const tempPath = path.join(__dirname, 'temp', fileName);
+      
+      // Save base64 file to temp storage
+      fs.writeFileSync(tempPath, Buffer.from(fileData, 'base64'));
+
+      // Get folder ID for group files
+      const baseFolderId = '1uoKXq4MXKEpEMT3_Fwdtttm84AIpq-h0'; // Your base folder ID
+      const groupFolderId = await getGroupFileFolderId(baseFolderId, groupId);
+
+      // Upload to Google Drive
+      const fileMetadata = {
+        name: fileName,
+        parents: [groupFolderId]
+      };
+
+      const media = {
+        mimeType: fileType,
+        body: fs.createReadStream(tempPath)
+      };
+
+      const driveResponse = await drive.files.create({
+        resource: fileMetadata,
+        media: media,
+        fields: 'id, webViewLink'
+      });
+
+      // Save message with file info
+      const groupMessage = new GroupMessage({
+        groupId,
+        sender,
+        message: JSON.stringify({
+          fileName,
+          fileId: driveResponse.data.id,
+          viewLink: driveResponse.data.webViewLink
+        }),
+        type: 'file'
+      });
+      await groupMessage.save();
+
+      // Get sender's username
+      const senderUser = await User.findById(sender);
+      const senderName = senderUser ? senderUser.username : 'Unknown';
+
+      // Emit to group
+      io.to(groupId).emit('receiveGroupMessage', {
+        groupId,
+        sender,
+        senderName,
+        message: groupMessage.message,
+        type: 'file',
+        timestamp: groupMessage.timestamp
+      });
+
+      // Cleanup temp file
+      fs.unlinkSync(tempPath);
+
+    } catch (err) {
+      console.error('Error handling group file upload:', err);
     }
   });
 
