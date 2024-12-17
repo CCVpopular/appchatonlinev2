@@ -460,21 +460,21 @@ class _ChatScreenState extends State<ChatScreen> {
         ],
       );
     } else if (isImage) {
-      return GestureDetector(
-        onLongPress: () => _downloadImage(message['message'] ?? ''),
-        child: Container(
-          constraints: BoxConstraints(
-            maxWidth: MediaQuery.of(context).size.width * 0.6,
-            maxHeight: 200,
-          ),
-          decoration: BoxDecoration(
-            color: Colors.grey[200],
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              CachedNetworkImage(
+      return Container(
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.6,
+          maxHeight: 200,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            GestureDetector(
+              onTap: () => _downloadImage(message['message'] ?? ''),
+              child: CachedNetworkImage(
                 imageUrl: message['message'] ?? '',
                 fit: BoxFit.contain,
                 placeholder: (context, url) => Center(
@@ -502,27 +502,27 @@ class _ChatScreenState extends State<ChatScreen> {
                   ],
                 ),
               ),
-              // Add timestamp overlay
-              Positioned(
-                bottom: 4,
-                right: 4,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    timeStr,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                    ),
+            ),
+            // Add timestamp overlay
+            Positioned(
+              bottom: 4,
+              right: 4,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  timeStr,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       );
     } else if (message['type'] == 'file') {
@@ -679,11 +679,10 @@ class _ChatScreenState extends State<ChatScreen> {
                       final isRecalled = message['isRecalled'] == 'true';
 
                       return GestureDetector(
-                        onLongPress: isCurrentUser &&
-                                !isRecalled &&
-                                message['id'] != null
+                        onLongPress: isCurrentUser && !isRecalled && message['id'] != null 
                             ? () => _showRecallDialog(message['id']!)
                             : null,
+                        behavior: HitTestBehavior.translucent,
                         child: Row(
                           mainAxisAlignment: isCurrentUser
                               ? MainAxisAlignment.end
