@@ -3,6 +3,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../config/config.dart';
+import '../services/download_service.dart';
 import '../services/groupchat_service.dart';
 import 'group_call_screen.dart';
 import 'invitemember_screen.dart';
@@ -42,7 +43,6 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     super.initState();
     groupChatService = GroupChatService(widget.groupId);
     _setupScrollController();
-    // Add recall listener
     groupChatService.recallStream.listen((messageId) {
       setState(() {
         final index = _currentMessages.indexWhere((msg) => msg['id'] == messageId);
@@ -53,6 +53,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     });
 
     _loadGroupInfo();
+    
+    DownloadService.initialize();
     _loadMemberAvatars();  // Add this line
     _setupCallNotifications();
   }
@@ -315,6 +317,116 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
       );
     }
 
+    if (message['type'] == 'image') {
+      return Container(
+        padding: EdgeInsets.all(4),
+        child: GestureDetector(
+          onLongPress: isSender && !isRecalled 
+              ? () => _showRecallDialog(message['id'])
+              : null,
+          onTap: () => _downloadImage(message['message']),
+          child: Column(
+            crossAxisAlignment: isSender ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+            children: [
+              if (!isSender && !isRecalled)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Text(
+                    message['sender'] ?? '',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              CachedNetworkImage(
+                imageUrl: message['message'],
+                placeholder: (context, url) => Container(
+                  width: 50,
+                  height: 50,
+                  child: CircularProgressIndicator(),
+                ),
+                errorWidget: (context, url, error) => Icon(Icons.error),
+              ),
+              Text(
+                _formatTime(message['timestamp']),
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: Colors.grey,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    } else if (message['type'] == 'file') {
+      final fileInfo = jsonDecode(message['message']);
+      return Container(
+        margin: const EdgeInsets.all(5.0),
+        child: GestureDetector(
+          onLongPress: isSender && !isRecalled 
+              ? () => _showRecallDialog(message['id'])
+              : null,
+          child: Container(
+            padding: const EdgeInsets.all(12.0),
+            decoration: BoxDecoration(
+              color: isSender
+                  ? const Color.fromARGB(145, 130, 190, 197)
+                  : Colors.grey[300],
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (!isSender && !isRecalled)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Text(
+                      message['sender'] ?? '',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                Row(
+                  children: [
+                    Icon(Icons.file_present),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        fileInfo['fileName'],
+                        style: TextStyle(fontWeight: FontWeight.bold)
+                      ),
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    TextButton(
+                      onPressed: () => launch(fileInfo['viewLink']),
+                      child: Text('Open File'),
+                    ),
+                    TextButton(
+                      onPressed: () => _downloadFile(fileInfo['viewLink'], fileInfo['fileName']),
+                      child: Text('Download'),
+                    ),
+                  ],
+                ),
+                Text(
+                  _formatTime(message['timestamp']),
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: Colors.grey,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return GestureDetector(
       onLongPress: isSender && !isRecalled 
           ? () => _showRecallDialog(message['id'])
@@ -462,6 +574,51 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     );
   }
 
+  Future<void> _downloadImage(String imageUrl) async {
+    try {
+      final fileName = 'IMG_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final taskId = await DownloadService.downloadFile(
+        url: imageUrl,
+        fileName: fileName,
+        isImage: true,
+      );
+
+      if (taskId != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Image download started')),
+        );
+      } else {
+        throw Exception('Download failed to start');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to download image: $e')),
+      );
+    }
+  }
+
+  Future<void> _downloadFile(String fileUrl, String fileName) async {
+    try {
+      final taskId = await DownloadService.downloadFile(
+        url: fileUrl,
+        fileName: fileName,
+        isImage: false,
+      );
+
+      if (taskId != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('File download started')),
+        );
+      } else {
+        throw Exception('Download failed to start');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to download file: $e')),
+      );
+    }
+  }
+
   void _setupCallNotifications() {
     groupChatService.socket.on('groupCallStarted', (data) {
       if (!mounted) return;
@@ -508,7 +665,6 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
       );
     });
   }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -591,7 +747,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                 }
                 
                 return ListView.builder(
-                  controller: _scrollController,  // Add scroll controller here
+                  controller: _scrollController, 
                   itemCount: messages.length + (_hasMoreMessages ? 1 : 0),
                   itemBuilder: (context, index) {
                     if (index == 0 && _hasMoreMessages) {
@@ -602,6 +758,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                     if (messageIndex >= messages.length) return null;
                     
                     final message = messages[messageIndex];
+                    // Update to use _id instead of id for consistency
+                    final messageId = message['_id'] ?? message['id'];
                     return Row(
                       mainAxisAlignment: message['senderId'] == widget.userId
                           ? MainAxisAlignment.end
@@ -609,7 +767,14 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                       children: [
                         if (message['senderId'] != widget.userId)
                           _buildMemberAvatar(message['senderId'], false),
-                        Flexible(child: _buildMessageContent(message)),
+                        Flexible(
+                          child: GestureDetector(
+                            onLongPress: message['senderId'] == widget.userId && !message['isRecalled']
+                                ? () => _showRecallDialog(messageId)
+                                : null,
+                            child: _buildMessageContent(message),
+                          ),
+                        ),
                         if (message['senderId'] == widget.userId)
                           _buildMemberAvatar(message['senderId'], true),
                       ],

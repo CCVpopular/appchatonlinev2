@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../screens/chatbot_screen.dart';
 import '../screens/settings_screen.dart';
 import 'friends_screen.dart';
@@ -56,33 +55,41 @@ class _MyHomePageState extends State<MyHomePage> {
                 Expanded(child: mainArea),
                 SafeArea(
                   child: BottomNavigationBar(
-                    items: const [
+                    items: [
                       BottomNavigationBarItem(
-                        icon: Icon(Icons.home),
+                        icon: _buildIcon(Icons.home, 0),
                         label: 'Friend',
                       ),
                       BottomNavigationBarItem(
-                        icon: Icon(Icons.group),
+                        icon: _buildIcon(Icons.group, 1),
                         label: 'Group',
                       ),
                       BottomNavigationBarItem(
-                        icon: Icon(Icons.chat),
+                        icon: _buildIcon(Icons.chat, 2),
                         label: 'Chat Bot',
                       ),
                       BottomNavigationBarItem(
-                        icon: Icon(Icons.settings),
+                        icon: _buildIcon(Icons.settings, 3),
                         label: 'Setting',
                       ),
                     ],
                     currentIndex: selectedIndex,
-                    selectedItemColor: colorScheme.primary, // Áp dụng màu từ theme
+                    selectedItemColor: colorScheme.primary, // Màu của icon khi được chọn
                     unselectedItemColor: colorScheme.onSurface.withOpacity(0.6),
-                    backgroundColor: colorScheme.surface, // Màu nền từ theme
+                    backgroundColor: colorScheme.surface, // Màu nền của navigation
+                    showSelectedLabels: true, // Hiển thị nhãn khi chọn
+                    showUnselectedLabels: false, // Ẩn nhãn khi không chọn
                     onTap: (value) {
                       setState(() {
                         selectedIndex = value;
                       });
                     },
+                    selectedLabelStyle: TextStyle(
+                      fontWeight: FontWeight.bold, // Làm đậm label khi chọn
+                    ),
+                    unselectedLabelStyle: TextStyle(
+                      fontWeight: FontWeight.normal, // Làm mờ label khi không chọn
+                    ),
                   ),
                 ),
               ],
@@ -93,33 +100,46 @@ class _MyHomePageState extends State<MyHomePage> {
                 SafeArea(
                   child: NavigationRail(
                     extended: constraints.maxWidth >= 600,
-                    destinations: const [
+                    destinations: [
                       NavigationRailDestination(
-                        icon: Icon(Icons.home),
+                        icon: _buildIcon(Icons.home, 0),
                         label: Text('Friend'),
                       ),
                       NavigationRailDestination(
-                        icon: Icon(Icons.group),
+                        icon: _buildIcon(Icons.group, 1),
                         label: Text('Group'),
                       ),
                       NavigationRailDestination(
-                        icon: Icon(Icons.chat),
+                        icon: _buildIcon(Icons.chat, 2),
                         label: Text('Chat Bot'),
                       ),
                       NavigationRailDestination(
-                        icon: Icon(Icons.settings),
+                        icon: _buildIcon(Icons.settings, 3),
                         label: Text('Setting'),
                       ),
                     ],
                     selectedIndex: selectedIndex,
-                    selectedIconTheme: IconThemeData(color: colorScheme.primary),
-                    unselectedIconTheme: IconThemeData(color: colorScheme.onSurface.withOpacity(0.6)),
+                    selectedIconTheme: IconThemeData(
+                      color: colorScheme.primary, // Màu của icon khi được chọn
+                      size: 30, // Kích thước lớn hơn khi chọn
+                    ),
+                    unselectedIconTheme: IconThemeData(
+                      color: colorScheme.onSurface.withOpacity(0.6), // Màu của icon khi không chọn
+                      size: 28, // Kích thước nhỏ hơn khi không chọn
+                    ),
                     backgroundColor: colorScheme.surface,
                     onDestinationSelected: (value) {
                       setState(() {
                         selectedIndex = value;
                       });
                     },
+                    labelType: NavigationRailLabelType.none, // Ẩn nhãn khi không chọn
+                    selectedLabelTextStyle: TextStyle(
+                      fontWeight: FontWeight.bold, // Làm đậm nhãn khi chọn
+                    ),
+                    unselectedLabelTextStyle: TextStyle(
+                      fontWeight: FontWeight.normal, // Làm mờ nhãn khi không chọn
+                    ),
                   ),
                 ),
                 Expanded(child: mainArea),
@@ -127,6 +147,36 @@ class _MyHomePageState extends State<MyHomePage> {
             );
           }
         },
+      ),
+    );
+  }
+
+  // Hàm tạo icon với hiệu ứng bóng, không có chữ trong vòng tròn
+  Widget _buildIcon(IconData icon, int index) {
+    var isSelected = selectedIndex == index;
+    return AnimatedContainer(
+      duration: Duration(milliseconds: 300),
+      transform: isSelected ? Matrix4.translationValues(0, -15, 0) : Matrix4.identity(), // Lệch lên khi chọn
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: isSelected ? Colors.blue.withOpacity(0.2) : Colors.transparent,
+        boxShadow: isSelected
+            ? [
+                BoxShadow(
+                  color: Colors.blue.withOpacity(0.4),
+                  blurRadius: 10,
+                  offset: Offset(0, 2),
+                )
+              ]
+            : [],
+      ),
+      padding: EdgeInsets.all(10),
+      child: Icon(
+        icon,
+        size: isSelected ? 30 : 24,
+        color: isSelected
+            ? Theme.of(context).colorScheme.primary
+            : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
       ),
     );
   }

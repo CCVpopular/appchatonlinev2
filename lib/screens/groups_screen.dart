@@ -31,9 +31,24 @@ class _GroupsScreenState extends State<GroupsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Groups'),
+        title: const Text('Groups'),
+        backgroundColor: Colors.transparent,
+        elevation: 4.0,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color.fromARGB(207, 70, 131, 180),
+                Color.fromARGB(41, 130, 190, 197),
+              ],
+            ),
+          ),
+        ),
         actions: [
-          ElevatedButton(
+          IconButton(
+            icon: Icon(Icons.add),
             onPressed: () {
               Navigator.push(
                 context,
@@ -43,12 +58,10 @@ class _GroupsScreenState extends State<GroupsScreen> {
                 ),
               ).then((result) {
                 if (result == true) {
-                  groupsService.refreshGroups(); // Gọi hàm làm mới danh sách
+                  groupsService.refreshGroups();
                 }
               });
             },
-
-            child: Text('Create Group'),
           ),
         ],
       ),
@@ -72,21 +85,46 @@ class _GroupsScreenState extends State<GroupsScreen> {
             itemCount: groups.length,
             itemBuilder: (context, index) {
               final group = groups[index];
-              return ListTile(
-                title: Text(group['name']),
-                subtitle: Text('Owner: ${group['owner']}'),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => GroupChatScreen(
-                        groupId: group['id'],
-                        userId: widget.userId,
-                      ),
+              return Container(
+                margin: const EdgeInsets.symmetric(vertical: 5.0, horizontal: 10.0),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(15),
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Color.fromARGB(207, 70, 131, 180),
+                      Color.fromARGB(129, 130, 190, 197),
+                    ],
+                  ),
+                ),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.all(10.0),
+                  title: Text(
+                    group['name'],
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Color.fromARGB(255, 0, 0, 0),
                     ),
-                  );
-
-                },
+                  ),
+                  subtitle: Text(
+                    'Owner: ${group['owner']}',
+                    style: const TextStyle(
+                      color: Color.fromARGB(255, 51, 51, 51),
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => GroupChatScreen(
+                          groupId: group['id'],
+                          userId: widget.userId,
+                        ),
+                      ),
+                    );
+                  },
+                ),
               );
             },
           );

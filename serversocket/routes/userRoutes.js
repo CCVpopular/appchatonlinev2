@@ -102,7 +102,6 @@ router.get('/profile/:userId', async (req, res) => {
         res.status(500).send({ error: 'Failed to get user profile' });
       }
     });
-    
 // Update user status
 router.put('/status/:userId', async (req, res) => {
   try {
@@ -148,7 +147,6 @@ router.put('/status/:userId', async (req, res) => {
     res.status(500).json({ error: 'Failed to update user status' });
   }
 });
-
 // Get all users
 router.get('/', async (req, res) => {
   try {
