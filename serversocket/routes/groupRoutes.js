@@ -82,13 +82,11 @@ router.post('/update-avatar/:groupId', upload.single('avatar'), async (req, res)
       mimeType: 'image/jpeg',
       body: fs.createReadStream(file.path)
     };
-
     const driveResponse = await drive.files.create({
       resource: fileMetadata,
       media: media,
       fields: 'id'
     });
-
     const avatarUrl = `https://drive.google.com/uc?export=view&id=${driveResponse.data.id}`;
     
     await Group.findByIdAndUpdate(groupId, { avatar: avatarUrl });
@@ -166,7 +164,6 @@ router.get('/members/:groupId', async (req, res) => {
     res.status(500).json({ message: 'Error fetching group members', error: error.message });
   }
 });
-
 router.post('/initialize-call', async (req, res) => {
   try {
     console.log('Initializing call for group:', req.body.groupId);

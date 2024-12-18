@@ -461,7 +461,6 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
       child: Icon(Icons.person, color: Colors.white, size: 20),
     );
   }
-
   void _setupCallNotifications() {
     groupChatService.socket.on('groupCallStarted', (data) {
       if (!mounted) return;
@@ -508,7 +507,6 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
       );
     });
   }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
