@@ -3,6 +3,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../config/config.dart';
+import '../services/download_service.dart';
 import '../services/groupchat_service.dart';
 import 'invitemember_screen.dart';
 import 'package:file_picker/file_picker.dart';
@@ -312,6 +313,62 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
       );
     }
 
+    if (message['type'] == 'image') {
+      return GestureDetector(
+        onTap: () => _downloadImage(message['message']),
+        child: CachedNetworkImage(
+          imageUrl: message['message'],
+          placeholder: (context, url) => Container(
+            width: 50,
+            height: 50,
+            child: CircularProgressIndicator(),
+          ),
+          errorWidget: (context, url, error) => Icon(Icons.error),
+        ),
+      );
+    } else if (message['type'] == 'file') {
+      final fileInfo = jsonDecode(message['message']);
+      return Container(
+        margin: const EdgeInsets.all(5.0),
+        padding: const EdgeInsets.all(12.0),
+        decoration: BoxDecoration(
+          color: message['senderId'] == widget.userId
+              ? const Color.fromARGB(145, 130, 190, 197)
+              : Colors.grey[300],
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.file_present),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    fileInfo['fileName'],
+                    style: TextStyle(fontWeight: FontWeight.bold)
+                  ),
+                ),
+              ],
+            ),
+            Row(
+              children: [
+                TextButton(
+                  onPressed: () => launch(fileInfo['viewLink']),
+                  child: Text('Open File'),
+                ),
+                TextButton(
+                  onPressed: () => _downloadFile(fileInfo['viewLink'], fileInfo['fileName']),
+                  child: Text('Download'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
     return GestureDetector(
       onLongPress: isSender && !isRecalled 
           ? () => _showRecallDialog(message['id'])
@@ -457,6 +514,51 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
       radius: 20,
       child: Icon(Icons.person, color: Colors.white, size: 20),
     );
+  }
+
+  Future<void> _downloadImage(String imageUrl) async {
+    try {
+      final fileName = 'IMG_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final taskId = await DownloadService.downloadFile(
+        url: imageUrl,
+        fileName: fileName,
+        isImage: true,
+      );
+
+      if (taskId != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Image download started')),
+        );
+      } else {
+        throw Exception('Download failed to start');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to download image: $e')),
+      );
+    }
+  }
+
+  Future<void> _downloadFile(String fileUrl, String fileName) async {
+    try {
+      final taskId = await DownloadService.downloadFile(
+        url: fileUrl,
+        fileName: fileName,
+        isImage: false,
+      );
+
+      if (taskId != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('File download started')),
+        );
+      } else {
+        throw Exception('Download failed to start');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to download file: $e')),
+      );
+    }
   }
 
   @override
