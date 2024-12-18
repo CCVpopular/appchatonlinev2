@@ -13,6 +13,7 @@ const messageRoutes = require('./routes/messageRoutes');
 const groupRoutes = require('./routes/groupRoutes');
 const userRoutes = require('./routes/userRoutes');
 const { google } = require('googleapis');
+
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -160,6 +161,7 @@ app.use((req, res, next) => {
 });
 
 // Routes
+app.use('/api/messages', messageRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/friends', friendRoutes);
 app.use('/api/messages', messageRoutes);

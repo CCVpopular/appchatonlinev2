@@ -43,6 +43,25 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _handleLogin() async {
+    try {
+      final authService = AuthService();
+      final response = await authService.login(usernameController.text, passwordController.text);
+      
+      // Make sure to save user ID immediately after successful login
+      await authService.saveLoginState(
+        response['userId'],
+        response['username'],
+        response['role'],
+        rememberMe,
+      );
+
+      // Rest of your login logic...
+    } catch (e) {
+      // Error handling...
+    }
+  }
+
   Future<void> _login() async {
     try {
       final authService = AuthService();
