@@ -11,6 +11,8 @@ import '../config/config.dart';
 import '../services/chat_service.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
+import 'package:path/path.dart' as path;
+import '../services/download_service.dart';
 
 class ChatScreen extends StatefulWidget {
   final String userId;
@@ -63,6 +65,7 @@ class _ChatScreenState extends State<ChatScreen> {
     // Initialize notification service with context
     NotificationService().init(widget.userId, context: context);
     _loadUserAvatars();
+    DownloadService.initialize();
   }
 
   void _onScroll() {
@@ -178,16 +181,27 @@ class _ChatScreenState extends State<ChatScreen> {
             ? 'application/${result.files.single.extension}'
             : 'application/octet-stream';
         
+        // Check file size
+        int fileSize = await file.length();
+        if (fileSize > 500 * 1024 * 1024) { // 500MB limit
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('File size must be less than 500MB')),
+          );
+          return;
+        }
+        
         await chatService.sendFile(
           file, 
           fileName, 
           mimeType,
           onProgress: (progress) {
-            // Progress is now handled by the upload progress card
+            // Progress is handled by the upload progress card
           }
         );
       }
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error sending file: $e')),
       );
@@ -340,6 +354,51 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  Future<void> _downloadImage(String imageUrl) async {
+    try {
+      final fileName = 'IMG_${DateTime.now().millisecondsSinceEpoch}${path.extension(imageUrl)}';
+      final taskId = await DownloadService.downloadFile(
+        url: imageUrl,
+        fileName: fileName,
+        isImage: true,
+      );
+
+      if (taskId != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Image download started')),
+        );
+      } else {
+        throw Exception('Download failed to start');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to download image: $e')),
+      );
+    }
+  }
+
+  Future<void> _downloadFile(String fileUrl, String fileName) async {
+    try {
+      final taskId = await DownloadService.downloadFile(
+        url: fileUrl,
+        fileName: fileName,
+        isImage: false,
+      );
+
+      if (taskId != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('File download started')),
+        );
+      } else {
+        throw Exception('Download failed to start');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to download file: $e')),
+      );
+    }
+  }
+
   Widget _buildMessageContent(Map<String, String> message) {
     final isTemporary = message['isTemporary'] == 'true';
     
@@ -413,32 +472,35 @@ class _ChatScreenState extends State<ChatScreen> {
         child: Stack(
           alignment: Alignment.center,
           children: [
-            CachedNetworkImage(
-              imageUrl: message['message'] ?? '',
-              fit: BoxFit.contain,
-              placeholder: (context, url) => Center(
-                child: Column(
+            GestureDetector(
+              onTap: () => _downloadImage(message['message'] ?? ''),
+              child: CachedNetworkImage(
+                imageUrl: message['message'] ?? '',
+                fit: BoxFit.contain,
+                placeholder: (context, url) => Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const CircularProgressIndicator(),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Loading...',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                ),
+                errorWidget: (context, url, error) => Column(
                   mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const CircularProgressIndicator(),
-                    const SizedBox(height: 8),
+                  children: const [
+                    Icon(Icons.error, color: Colors.red, size: 32),
+                    SizedBox(height: 4),
                     Text(
-                      'Loading...',
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      'Failed to load image',
+                      style: TextStyle(color: Colors.red, fontSize: 12),
                     ),
                   ],
                 ),
-              ),
-              errorWidget: (context, url, error) => Column(
-                mainAxisSize: MainAxisSize.min,
-                children: const [
-                  Icon(Icons.error, color: Colors.red, size: 32),
-                  SizedBox(height: 4),
-                  Text(
-                    'Failed to load image',
-                    style: TextStyle(color: Colors.red, fontSize: 12),
-                  ),
-                ],
               ),
             ),
             // Add timestamp overlay
@@ -487,9 +549,17 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
               ],
             ),
-            TextButton(
-              onPressed: () => launch(fileInfo['viewLink']),
-              child: Text('Open File'),
+            Row(
+              children: [
+                TextButton(
+                  onPressed: () => launch(fileInfo['viewLink']),
+                  child: Text('Open File'),
+                ),
+                TextButton(
+                  onPressed: () => _downloadFile(fileInfo['viewLink'], fileInfo['fileName']),
+                  child: Text('Download'),
+                ),
+              ],
             ),
             Text(
               timeStr,
@@ -609,11 +679,10 @@ class _ChatScreenState extends State<ChatScreen> {
                       final isRecalled = message['isRecalled'] == 'true';
 
                       return GestureDetector(
-                        onLongPress: isCurrentUser &&
-                                !isRecalled &&
-                                message['id'] != null
+                        onLongPress: isCurrentUser && !isRecalled && message['id'] != null 
                             ? () => _showRecallDialog(message['id']!)
                             : null,
+                        behavior: HitTestBehavior.translucent,
                         child: Row(
                           mainAxisAlignment: isCurrentUser
                               ? MainAxisAlignment.end
