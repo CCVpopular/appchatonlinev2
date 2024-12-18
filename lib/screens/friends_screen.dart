@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import '../config/config.dart';
 import '../services/friend_service.dart';
 import 'addfriend_screen.dart';
 import 'chat_screen.dart';
 import 'friendrequests_screen.dart';
 import 'dart:async';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class FriendsScreen extends StatefulWidget {
   final String userId;
@@ -16,19 +19,59 @@ class FriendsScreen extends StatefulWidget {
 
 class _FriendsScreenState extends State<FriendsScreen> {
   late FriendService friendService;
+  Map<String, Map<String, dynamic>> latestMessages = {};
+  final String baseUrl = Config.apiBaseUrl;
+
 
   @override
   void initState() {
     super.initState();
     friendService = FriendService();
-    // Initial load and periodic refresh
     friendService.getFriends(widget.userId);
-    // Refresh friend list every 30 seconds to ensure status is up to date
+    _loadLatestMessages();
+    
+    // Refresh both friends and messages periodically
     Timer.periodic(Duration(seconds: 30), (_) {
       if (mounted) {
         friendService.getFriends(widget.userId);
+        _loadLatestMessages();
       }
     });
+  }
+
+  Future<void> _loadLatestMessages() async {
+    try {
+      // Update the URL to match the backend route
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/messages/latest-messages/${widget.userId}'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> messages = json.decode(response.body);
+        print('Received messages: $messages');
+        
+        setState(() {
+          latestMessages.clear();
+          for (var message in messages) {
+            if (message['friendId'] != null) {
+              latestMessages[message['friendId']] = {
+                'message': message['message'] ?? '',
+                'type': message['type'] ?? 'text',
+                'isRecalled': message['isRecalled'] ?? false,
+                'timestamp': DateTime.parse(message['timestamp']),
+              };
+            }
+          }
+        });
+        print('Updated latest messages: $latestMessages');
+      } else {
+        print('Error status code: ${response.statusCode}');
+        print('Error body: ${response.body}');
+      }
+    } catch (e) {
+      print('Error loading latest messages: $e');
+    }
   }
 
   // Add this method to build status indicator
@@ -56,6 +99,38 @@ class _FriendsScreenState extends State<FriendsScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildLatestMessage(String friendId) {
+    final messageData = latestMessages[friendId];
+    if (messageData == null) return const SizedBox.shrink();
+
+    String messageText;
+    if (messageData['isRecalled'] == true) {
+      messageText = 'Message recalled';
+    } else {
+      switch(messageData['type']) {
+        case 'image':
+          messageText = '🖼️ Image';
+          break;
+        case 'file':
+          messageText = '📎 File';
+          break;
+        default:
+          messageText = messageData['message'] ?? '';
+      }
+    }
+
+    return Text(
+      messageText,
+      style: const TextStyle(
+        color: Colors.black54,
+        fontSize: 13,
+        height: 1.5,
+      ),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
     );
   }
 
@@ -133,7 +208,11 @@ class _FriendsScreenState extends State<FriendsScreen> {
               final friendData = friend['requester']['_id'] == widget.userId
                   ? friend['receiver']
                   : friend['requester'];
-
+              
+              // Print debug information
+              print('Friend ID: ${friendData['_id']}');
+              print('Latest message for this friend: ${latestMessages[friendData['_id']]}');
+              
               return Container(
                 margin: const EdgeInsets.symmetric(vertical: 5.0, horizontal: 10.0),
                 decoration: BoxDecoration(
@@ -172,14 +251,33 @@ class _FriendsScreenState extends State<FriendsScreen> {
                       color: Colors.black87,
                     ),
                   ),
-                  subtitle: Text(
-                    friendData['status'] == 'online' ? 'Online' : 'Offline',
-                    style: TextStyle(
-                      color: friendData['status'] == 'online' 
-                          ? Color(0xFF4CAF50)  // Material Design Green
-                          : Color(0xFF9E9E9E), // Material Design Grey
-                      fontWeight: FontWeight.w500,
-                    ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (latestMessages.containsKey(friendData['_id']))
+                        _buildLatestMessage(friendData['_id'])
+                      else
+                        Text(
+                          'No messages yet',
+                          style: const TextStyle(
+                            color: Colors.black54,
+                            fontSize: 13,
+                            height: 1.5,
+                          ),
+                        ),
+                      const SizedBox(height: 4),
+                      Text(
+                        friendData['status'] == 'online' ? 'Online' : 'Offline',
+                        style: TextStyle(
+                          color: friendData['status'] == 'online' 
+                              ? Color(0xFF4CAF50)
+                              : Color(0xFF9E9E9E),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
                   onTap: () {
                     Navigator.push(
