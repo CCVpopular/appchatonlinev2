@@ -1,32 +1,73 @@
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 
 class SocketManager {
-  static final SocketManager _instance = SocketManager._internal();
-  IO.Socket? _socket;
+  static SocketManager? _instance;
+  static IO.Socket? _socket;
 
-  factory SocketManager(String baseUrl) {
-    _instance._initializeSocket(baseUrl);
-    return _instance;
+  factory SocketManager(String serverUrl) {
+    _instance ??= SocketManager._internal(serverUrl);
+    return _instance!;
   }
 
-  SocketManager._internal();
+  SocketManager._internal(String serverUrl) {
+    _socket ??= IO.io(serverUrl, <String, dynamic>{
+      'transports': ['websocket'],
+      'autoConnect': true,
+    });
 
-  void _initializeSocket(String baseUrl) {
-    if (_socket == null || !(_socket!.connected)) {
-      _socket = IO.io(
-        baseUrl,
-        IO.OptionBuilder().setTransports(['websocket']).build(),
-      );
+    // Add status change listener
+    _socket!.on('userStatusChanged', (data) {
+      print('Status changed: $data');
+      // You can add a callback here or use a stream controller
+      if (onStatusChange != null) {
+        onStatusChange!(data);
+      }
+    });
+  }
 
-      _socket?.onConnect((_) => print('Socket connected'));
-      _socket?.onDisconnect((_) => print('Socket disconnected'));
-    }
+  // Callback for status changes
+  Function(dynamic)? onStatusChange;
+
+  void setStatusChangeCallback(Function(dynamic) callback) {
+    onStatusChange = callback;
   }
 
   IO.Socket getSocket() {
-    if (_socket == null) {
-      throw Exception('Socket has not been initialized. Call SocketManager(baseUrl) first.');
-    }
     return _socket!;
+  }
+
+  Future<void> disconnect() async {
+    if (_socket != null) {
+      try {
+        print('=== Socket Disconnection Start ===');
+        print('Current socket status: ${_socket!.connected ? 'connected' : 'disconnected'}');
+        
+        // Force disconnect
+        print('Step 1: Disconnecting socket');
+        _socket!.disconnect();
+        
+        print('Step 2: Waiting for disconnect to complete');
+        await Future.delayed(Duration(milliseconds: 500));
+        
+        print('Step 3: Cleaning up socket');
+        _socket!.dispose();
+        _socket!.destroy();
+        _socket!.close();
+        
+        print('Step 4: Clearing socket references');
+        _socket = null;
+        _instance = null;
+        
+        print('=== Socket Disconnection Complete ===');
+      } catch (e) {
+        print('!!! Error during socket disconnection:');
+        print(e.toString());
+        print('Forcing socket cleanup');
+        _socket = null;
+        _instance = null;
+      }
+    } else {
+      print('No active socket to disconnect');
+    }
   }
 }

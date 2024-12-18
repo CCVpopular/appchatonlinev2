@@ -3,6 +3,7 @@ import '../services/friend_service.dart';
 import 'addfriend_screen.dart';
 import 'chat_screen.dart';
 import 'friendrequests_screen.dart';
+import 'dart:async';
 
 class FriendsScreen extends StatefulWidget {
   final String userId;
@@ -20,14 +21,43 @@ class _FriendsScreenState extends State<FriendsScreen> {
   void initState() {
     super.initState();
     friendService = FriendService();
+    // Initial load and periodic refresh
     friendService.getFriends(widget.userId);
+    // Refresh friend list every 30 seconds to ensure status is up to date
+    Timer.periodic(Duration(seconds: 30), (_) {
+      if (mounted) {
+        friendService.getFriends(widget.userId);
+      }
+    });
   }
 
-  // @override
-  // void dispose() {
-  //   friendService.dispose();
-  //   super.dispose();
-  // }
+  // Add this method to build status indicator
+  Widget _buildStatusIndicator(String? status) {
+    // Ensure status is not null and properly handled
+    final isOnline = status?.toLowerCase() == 'online';
+    return Container(
+      width: 12,
+      height: 12,
+      margin: EdgeInsets.only(right: 8),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: isOnline 
+            ? Color(0xFF4CAF50)  // Material Design Green
+            : Color(0xFF9E9E9E),  // Material Design Grey
+        border: Border.all(
+          color: Colors.white,
+          width: 2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 2,
+            offset: Offset(0, 1),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -100,40 +130,55 @@ class _FriendsScreenState extends State<FriendsScreen> {
             itemCount: friends.length,
             itemBuilder: (context, index) {
               final friend = friends[index];
-
-              // Kiểm tra cấu trúc của `friend`
-              final friendRequester =
-                  friend['requester'] as Map<String, dynamic>? ?? {};
-              final friendReceiver =
-                  friend['receiver'] as Map<String, dynamic>? ?? {};
-              final friendUsername = friendRequester['_id'] == widget.userId
-                  ? (friendReceiver['username'] ?? 'Unknown')
-                  : (friendRequester['username'] ?? 'Unknown');
+              final friendData = friend['requester']['_id'] == widget.userId
+                  ? friend['receiver']
+                  : friend['requester'];
 
               return Container(
-                margin:
-                    const EdgeInsets.symmetric(vertical: 5.0, horizontal: 10.0),
+                margin: const EdgeInsets.symmetric(vertical: 5.0, horizontal: 10.0),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(15), // Bo tròn góc
+                  borderRadius: BorderRadius.circular(15),
                   gradient: const LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      Color.fromARGB(
-                          207, 70, 131, 180), // Màu thứ hai của gradient
-                      Color.fromARGB(129, 130, 190, 197), // Màu đầu tiên
+                      Color.fromARGB(207, 70, 131, 180),
+                      Color.fromARGB(129, 130, 190, 197),
                     ],
                   ),
                 ),
                 child: ListTile(
-                  contentPadding: const EdgeInsets.all(
-                      10.0), // Padding cho nội dung ListTile
+                  leading: Stack(
+                    children: [
+                      CircleAvatar(
+                        backgroundImage: friendData['avatar'] != null && friendData['avatar'].isNotEmpty
+                            ? NetworkImage(friendData['avatar'])
+                            : null,
+                        child: friendData['avatar'] == null || friendData['avatar'].isEmpty
+                            ? Icon(Icons.person)
+                            : null,
+                      ),
+                      Positioned(
+                        right: 0,
+                        bottom: 0,
+                        child: _buildStatusIndicator(friendData['status'] ?? 'offline'),
+                      ),
+                    ],
+                  ),
                   title: Text(
-                    friendUsername,
+                    friendData['username'] ?? 'Unknown',
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: Color.fromARGB(255, 0, 0,
-                          0), // Màu chữ trắng để nổi bật trên nền gradient
+                      color: Colors.black87,
+                    ),
+                  ),
+                  subtitle: Text(
+                    friendData['status'] == 'online' ? 'Online' : 'Offline',
+                    style: TextStyle(
+                      color: friendData['status'] == 'online' 
+                          ? Color(0xFF4CAF50)  // Material Design Green
+                          : Color(0xFF9E9E9E), // Material Design Grey
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                   onTap: () {
@@ -142,9 +187,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                       MaterialPageRoute(
                         builder: (context) => ChatScreen(
                           userId: widget.userId,
-                          friendId: friendRequester['_id'] == widget.userId
-                              ? friendReceiver['_id'] ?? ''
-                              : friendRequester['_id'] ?? '',
+                          friendId: friendData['_id'],
                         ),
                       ),
                     );
