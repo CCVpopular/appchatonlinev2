@@ -2,9 +2,8 @@ import 'dart:io';
 
 import 'package:appchatonline/screens/home_screen.dart';
 import 'package:appchatonline/screens/register_screen.dart';
-import 'package:appchatonline/screens/admin_dashboard.dart'; // Add this line
+import 'package:appchatonline/screens/admin_dashboard.dart';
 import 'package:flutter/material.dart';
-// import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
 import '../services/notification_service.dart';
 

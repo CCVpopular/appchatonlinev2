@@ -315,57 +315,111 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     }
 
     if (message['type'] == 'image') {
-      return GestureDetector(
-        onTap: () => _downloadImage(message['message']),
-        child: CachedNetworkImage(
-          imageUrl: message['message'],
-          placeholder: (context, url) => Container(
-            width: 50,
-            height: 50,
-            child: CircularProgressIndicator(),
+      return Container(
+        padding: EdgeInsets.all(4),
+        child: GestureDetector(
+          onLongPress: isSender && !isRecalled 
+              ? () => _showRecallDialog(message['id'])
+              : null,
+          onTap: () => _downloadImage(message['message']),
+          child: Column(
+            crossAxisAlignment: isSender ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+            children: [
+              if (!isSender && !isRecalled)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Text(
+                    message['sender'] ?? '',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              CachedNetworkImage(
+                imageUrl: message['message'],
+                placeholder: (context, url) => Container(
+                  width: 50,
+                  height: 50,
+                  child: CircularProgressIndicator(),
+                ),
+                errorWidget: (context, url, error) => Icon(Icons.error),
+              ),
+              Text(
+                _formatTime(message['timestamp']),
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: Colors.grey,
+                ),
+              ),
+            ],
           ),
-          errorWidget: (context, url, error) => Icon(Icons.error),
         ),
       );
     } else if (message['type'] == 'file') {
       final fileInfo = jsonDecode(message['message']);
       return Container(
         margin: const EdgeInsets.all(5.0),
-        padding: const EdgeInsets.all(12.0),
-        decoration: BoxDecoration(
-          color: message['senderId'] == widget.userId
-              ? const Color.fromARGB(145, 130, 190, 197)
-              : Colors.grey[300],
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+        child: GestureDetector(
+          onLongPress: isSender && !isRecalled 
+              ? () => _showRecallDialog(message['id'])
+              : null,
+          child: Container(
+            padding: const EdgeInsets.all(12.0),
+            decoration: BoxDecoration(
+              color: isSender
+                  ? const Color.fromARGB(145, 130, 190, 197)
+                  : Colors.grey[300],
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.file_present),
-                SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    fileInfo['fileName'],
-                    style: TextStyle(fontWeight: FontWeight.bold)
+                if (!isSender && !isRecalled)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Text(
+                      message['sender'] ?? '',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                Row(
+                  children: [
+                    Icon(Icons.file_present),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        fileInfo['fileName'],
+                        style: TextStyle(fontWeight: FontWeight.bold)
+                      ),
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    TextButton(
+                      onPressed: () => launch(fileInfo['viewLink']),
+                      child: Text('Open File'),
+                    ),
+                    TextButton(
+                      onPressed: () => _downloadFile(fileInfo['viewLink'], fileInfo['fileName']),
+                      child: Text('Download'),
+                    ),
+                  ],
+                ),
+                Text(
+                  _formatTime(message['timestamp']),
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: Colors.grey,
                   ),
                 ),
               ],
             ),
-            Row(
-              children: [
-                TextButton(
-                  onPressed: () => launch(fileInfo['viewLink']),
-                  child: Text('Open File'),
-                ),
-                TextButton(
-                  onPressed: () => _downloadFile(fileInfo['viewLink'], fileInfo['fileName']),
-                  child: Text('Download'),
-                ),
-              ],
-            ),
-          ],
+          ),
         ),
       );
     }
@@ -624,7 +678,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                 }
                 
                 return ListView.builder(
-                  controller: _scrollController,  // Add scroll controller here
+                  controller: _scrollController, 
                   itemCount: messages.length + (_hasMoreMessages ? 1 : 0),
                   itemBuilder: (context, index) {
                     if (index == 0 && _hasMoreMessages) {
@@ -635,6 +689,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                     if (messageIndex >= messages.length) return null;
                     
                     final message = messages[messageIndex];
+                    // Update to use _id instead of id for consistency
+                    final messageId = message['_id'] ?? message['id'];
                     return Row(
                       mainAxisAlignment: message['senderId'] == widget.userId
                           ? MainAxisAlignment.end
@@ -642,7 +698,14 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                       children: [
                         if (message['senderId'] != widget.userId)
                           _buildMemberAvatar(message['senderId'], false),
-                        Flexible(child: _buildMessageContent(message)),
+                        Flexible(
+                          child: GestureDetector(
+                            onLongPress: message['senderId'] == widget.userId && !message['isRecalled']
+                                ? () => _showRecallDialog(messageId)
+                                : null,
+                            child: _buildMessageContent(message),
+                          ),
+                        ),
                         if (message['senderId'] == widget.userId)
                           _buildMemberAvatar(message['senderId'], true),
                       ],

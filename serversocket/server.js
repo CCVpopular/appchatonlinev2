@@ -525,6 +525,7 @@ io.on('connection', (socket) => {
       const group = await Group.findById(groupId);
       // Phát tin nhắn tới tất cả thành viên trong nhóm
       io.to(groupId).emit('receiveGroupMessage', {
+        _id: groupMessage._id, // Add message ID
         groupId,
         sender,
         senderName,
@@ -603,9 +604,10 @@ io.on('connection', (socket) => {
       // Update message in database
       await GroupMessage.findByIdAndUpdate(messageId, { isRecalled: true });
       
-      // Send recall event to group
+      // Send recall event to group with all necessary data
       io.to(groupId).emit('groupMessageRecalled', { 
         messageId,
+        groupId,
         isRecalled: true,
         timestamp: new Date()
       });

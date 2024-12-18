@@ -29,11 +29,13 @@ class GroupChatService {
     // Lắng nghe tin nhắn mới
     socket.on('receiveGroupMessage', (data) {
       final newMessage = {
+        '_id': data['_id'], // Use _id for consistency
         'sender': data['senderName'],
         'message': data['message'],
         'timestamp': data['timestamp'],
         'senderId': data['sender'], // Add sender ID for notification handling
         'type': data['type'] ?? 'text', // Add type field
+        'isRecalled': false,
       };
       _currentMessages.add(newMessage);
       if (!_messagesgroupStreamController.isClosed) {
@@ -43,6 +45,14 @@ class GroupChatService {
     socket.emit('joinGroup', {'groupId': groupId});
 
     socket.on('groupMessageRecalled', (data) {
+      final index = _currentMessages.indexWhere((msg) => 
+        (msg['_id'] ?? msg['id']) == data['messageId']);
+      if (index != -1) {
+        _currentMessages[index]['isRecalled'] = true;
+        if (!_messagesgroupStreamController.isClosed) {
+          _messagesgroupStreamController.add(_currentMessages);
+        }
+      }
       _recallStreamController.add(data['messageId']);
     });
   }
