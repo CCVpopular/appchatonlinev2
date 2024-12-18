@@ -96,34 +96,34 @@ class _CallScreenState extends State<CallScreen> {
       child: Scaffold(
         body: Stack(
           children: [
-            // Main view (local user)
+            // Main view (remote user)
             if (_isInCall) ...[
-              AgoraVideoView(
-                controller: VideoViewController(
-                  rtcEngine: _callService.engine!,
-                  canvas: const VideoCanvas(uid: 0),
-                ),
-              ),
-              // Remote user view
               if (_remoteUid != null)
-                Positioned(
-                  top: 10,
-                  right: 10,
-                  width: 120,
-                  height: 160,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.white, width: 1),
-                    ),
-                    child: AgoraVideoView(
-                      controller: VideoViewController.remote(
-                        rtcEngine: _callService.engine!,
-                        canvas: VideoCanvas(uid: _remoteUid),
-                        connection: const RtcConnection(channelId: ''),
-                      ),
+                AgoraVideoView(
+                  controller: VideoViewController.remote(
+                    rtcEngine: _callService.engine!,
+                    canvas: VideoCanvas(uid: _remoteUid),
+                    connection: const RtcConnection(channelId: ''),
+                  ),
+                ),
+              // Local user view (smaller)
+              Positioned(
+                top: 10,
+                right: 10,
+                width: 120,
+                height: 160,
+                child: Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.white, width: 1),
+                  ),
+                  child: AgoraVideoView(
+                    controller: VideoViewController(
+                      rtcEngine: _callService.engine!,
+                      canvas: const VideoCanvas(uid: 0),
                     ),
                   ),
                 ),
+              ),
             ] else
               const Center(child: CircularProgressIndicator()),
 

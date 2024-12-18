@@ -102,6 +102,51 @@ router.get('/profile/:userId', async (req, res) => {
         res.status(500).send({ error: 'Failed to get user profile' });
       }
     });
+// Update user status
+router.put('/status/:userId', async (req, res) => {
+  try {
+    const { status } = req.body;
+    const userId = req.params.userId;
+    
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { 
+        $set: {
+          status: status,
+          lastSeen: status === 'offline' ? Date.now() : null
+        }
+      },
+      { new: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Get the socket.io instance
+    const io = req.app.get('socketio');
+    if (io) {
+      // Broadcast the status change to all connected clients
+      io.emit('userStatusChanged', {
+        userId: user._id,
+        status: status,
+        lastSeen: user.lastSeen
+      });
+    }
+
+    res.json({
+      success: true,
+      user: {
+        _id: user._id,
+        status: user.status,
+        lastSeen: user.lastSeen
+      }
+    });
+  } catch (err) {
+    console.error('Error updating status:', err);
+    res.status(500).json({ error: 'Failed to update user status' });
+  }
+});
 // Get all users
 router.get('/', async (req, res) => {
   try {
@@ -117,9 +162,18 @@ router.post('/', async (req, res) => {
   try {
     const { username, password, role } = req.body;
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = new User({ username, password: hashedPassword, role });
+    const user = new User({ 
+      username, 
+      password: hashedPassword, 
+      role,
+      status: 'offline',  // Explicitly set status to offline
+      lastSeen: Date.now()
+    });
     await user.save();
-    res.status(201).json({ message: 'User created successfully', user: { ...user.toJSON(), password: undefined } });
+    res.status(201).json({ 
+      message: 'User created successfully', 
+      user: { ...user.toJSON(), password: undefined } 
+    });
   } catch (err) {
     res.status(500).send({ error: 'Failed to create user' });
   }

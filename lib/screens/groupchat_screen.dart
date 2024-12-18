@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../config/config.dart';
 import '../services/groupchat_service.dart';
+import 'group_call_screen.dart';
 import 'invitemember_screen.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:convert';
@@ -53,6 +54,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
 
     _loadGroupInfo();
     _loadMemberAvatars();  // Add this line
+    _setupCallNotifications();
   }
 
   void _setupScrollController() {
@@ -170,6 +172,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
 
   @override
   void dispose() {
+    groupChatService.socket.off('groupCallStarted');
     _scrollController.dispose();
     groupChatService.dispose();
     super.dispose();
@@ -458,7 +461,52 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
       child: Icon(Icons.person, color: Colors.white, size: 20),
     );
   }
+  void _setupCallNotifications() {
+    groupChatService.socket.on('groupCallStarted', (data) {
+      if (!mounted) return;
+      
+      // Don't show notification to call initiator
+      if (data['initiatorId'] == widget.userId) return;
 
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          title: Text('Incoming Group Call'),
+          content: Text('${data['initiatorName']} started a group call'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context); // Close dialog
+              },
+              child: Text('Decline'),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(context); // Close dialog
+                final token = await groupChatService.initializeGroupCall(widget.groupId);
+                if (token != null && mounted) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => GroupCallScreen(
+                        groupId: widget.groupId,
+                        channelName: widget.groupId,
+                        token: token,
+                        userId: widget.userId,
+                        isInitiator: false,
+                      ),
+                    ),
+                  );
+                }
+              },
+              child: Text('Join'),
+            ),
+          ],
+        ),
+      );
+    });
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -478,6 +526,26 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
           ],
         ),
         actions: [
+          IconButton(
+            icon: Icon(Icons.call),
+            onPressed: () async {
+              final token = await groupChatService.initializeGroupCall(widget.groupId);
+              if (token != null) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => GroupCallScreen(
+                      groupId: widget.groupId,
+                      channelName: widget.groupId,
+                      token: token,
+                      userId: widget.userId,
+                      isInitiator: true,
+                    ),
+                  ),
+                );
+              }
+            },
+          ),
           IconButton(
             icon: Icon(Icons.person_add),
             onPressed: () {
