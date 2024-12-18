@@ -20,7 +20,7 @@ const fs = require('fs');
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
-  maxHttpBufferSize: 500 * 1024 * 1024, // 500MB for Socket.IO
+  maxHttpBufferSize: 500 * 1024 * 1024,
 });
 
 const admin = require('firebase-admin');

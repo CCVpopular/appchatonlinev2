@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:path/path.dart' as path;
 
 class DownloadService {
   static Future<void> initialize() async {
@@ -108,10 +109,12 @@ class DownloadService {
         }
       }
 
+      final uniqueFileName = await _getUniqueFileName(fullPath, fileName);
+
       final taskId = await FlutterDownloader.enqueue(
         url: downloadUrl,
         savedDir: fullPath,
-        fileName: fileName,
+        fileName: uniqueFileName,
         showNotification: true,
         openFileFromNotification: true,
         saveInPublicStorage: true,
@@ -124,6 +127,34 @@ class DownloadService {
       print('Download error: $e');
       return null;
     }
+  }
+
+  static Future<String> _getUniqueFileName(String directory, String fileName) async {
+    String nameWithoutExtension = path.basenameWithoutExtension(fileName);
+    String extension = path.extension(fileName);
+    String uniqueFileName = fileName;
+    int fileSuffix = 1;
+
+    String fullPath = path.join(directory, uniqueFileName);
+    // Check both file existence and ongoing download tasks
+    while (await File(fullPath).exists() || await _isFileDownloading(fullPath)) {
+      uniqueFileName = '$nameWithoutExtension($fileSuffix)$extension';
+      fullPath = path.join(directory, uniqueFileName);
+      fileSuffix++;
+    }
+    return uniqueFileName;
+  }
+
+  static Future<bool> _isFileDownloading(String filePath) async {
+    final tasks = await FlutterDownloader.loadTasks();
+    if (tasks != null) {
+      for (var task in tasks) {
+        if ('${task.savedDir}/${task.filename}' == filePath) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   static Future<void> cancelDownload(String taskId) async {

@@ -42,7 +42,6 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     super.initState();
     groupChatService = GroupChatService(widget.groupId);
     _setupScrollController();
-    // Add recall listener
     groupChatService.recallStream.listen((messageId) {
       setState(() {
         final index = _currentMessages.indexWhere((msg) => msg['id'] == messageId);
@@ -53,7 +52,9 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     });
 
     _loadGroupInfo();
-    _loadMemberAvatars();  // Add this line
+    _loadMemberAvatars();
+    
+    DownloadService.initialize();
   }
 
   void _setupScrollController() {
