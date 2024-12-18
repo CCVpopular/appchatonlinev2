@@ -2,16 +2,16 @@ const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const mongoose = require('mongoose');
-const authRoutes = require('./routes/authRoutes');
-const friendRoutes = require('./routes/friendRoutes');
-const messageRoutes = require('./routes/messageRoutes');
 const Message = require('./models/Message');
 const GroupMessage = require('./models/GroupMessage');
 const User = require('./models/User');
-const GroupRoutes = require('./routes/groupRoutes')
 const Group = require('./models/Group');
-const userRoutes = require('./routes/userRoutes')
-
+const notificationRoutes = require('./routes/notificationRoutes')
+const authRoutes = require('./routes/authRoutes');
+const friendRoutes = require('./routes/friendRoutes');
+const messageRoutes = require('./routes/messageRoutes');
+const groupRoutes = require('./routes/groupRoutes');
+const userRoutes = require('./routes/userRoutes');
 const { google } = require('googleapis');
 const multer = require('multer');
 const path = require('path');
@@ -146,13 +146,27 @@ app.set('socketio', io);
 
 // Middleware
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Add console logging middleware to debug requests
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url}`);
+  next();
+});
 
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/friends', friendRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/groups', GroupRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/groups', groupRoutes);
+// Add error handling middleware
+
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  res.status(500).json({ error: err.message });
+});
 
 io.on('connection', (socket) => {
   console.log('New client connected');

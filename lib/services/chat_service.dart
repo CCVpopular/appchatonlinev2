@@ -126,22 +126,28 @@ class ChatService {
   }
 
   // Hàm lấy tin nhắn cũ
-  Future<List<Map<String, String>>> loadMessages() async {
-    final url = Uri.parse('${baseUrl}/api/messages/messages/$userId/$friendId');
+  Future<Map<String, dynamic>> loadMessages({int page = 1, int limit = 20}) async {
+    final url = Uri.parse('${baseUrl}/api/messages/messages/$userId/$friendId?page=$page&limit=$limit');
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
-        return data.map((msg) {
-          return {
-            'id': msg['_id'].toString(),
-            'sender': msg['sender'].toString(),
-            'message': msg['message'].toString(),
-            'type': msg['type']?.toString() ?? 'text',
-            'isRecalled': msg['isRecalled']?.toString() ?? 'false',
-            'timestamp': msg['timestamp']?.toString() ?? DateTime.now().toIso8601String(),
-          };
-        }).toList().cast<Map<String, String>>();
+        final Map<String, dynamic> data = jsonDecode(response.body);
+        final List<dynamic> messagesList = data['messages'];
+        
+        return {
+          'messages': messagesList.map((msg) {
+            return {
+              'id': msg['_id'].toString(),
+              'sender': msg['sender'].toString(),
+              'message': msg['message'].toString(),
+              'type': msg['type']?.toString() ?? 'text',
+              'isRecalled': msg['isRecalled']?.toString() ?? 'false',
+              'timestamp': msg['timestamp']?.toString() ?? DateTime.now().toIso8601String(),
+            };
+          }).toList(),
+          'hasMore': data['hasMore'],
+          'total': data['total'],
+        };
       } else {
         throw Exception('Failed to load messages: ${response.body}');
       }

@@ -1,12 +1,16 @@
 import 'dart:convert';
-
+import 'package:appchatonline/config/config.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../services/notification_service.dart';
+import 'call_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../config/config.dart';
 import '../services/chat_service.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:http/http.dart' as http;
 
 class ChatScreen extends StatefulWidget {
   final String userId;
@@ -25,6 +29,13 @@ class _ChatScreenState extends State<ChatScreen> {
   final List<Map<String, String>> messages = [];
   bool isLoading = true;
   final ImagePicker _picker = ImagePicker();
+  String? friendAvatar;
+  String? myAvatar;
+  final ScrollController _scrollController = ScrollController();
+  int _currentPage = 1;
+  static const int _pageSize = 20;
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
 
   @override
   void initState() {
@@ -32,6 +43,7 @@ class _ChatScreenState extends State<ChatScreen> {
     messages.clear(); // Clear messages when initializing
     chatService = ChatService(widget.userId, widget.friendId);
 
+    _scrollController.addListener(_onScroll);
     // Load old messages
     _loadMessages();
 
@@ -47,22 +59,93 @@ class _ChatScreenState extends State<ChatScreen> {
         }
       });
     });
+
+    // Initialize notification service with context
+    NotificationService().init(widget.userId, context: context);
+    _loadUserAvatars();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels == 0 && !_isLoadingMore && _hasMore) {
+      _loadMoreMessages();
+    }
+  }
+
+  Future<void> _loadUserAvatars() async {
+    try {
+      // Load friend's profile
+      final friendProfile = await http.get(
+        Uri.parse('${Config.apiBaseUrl}/api/users/profile/${widget.friendId}')
+      );
+      
+      // Load my profile
+      final myProfile = await http.get(
+        Uri.parse('${Config.apiBaseUrl}/api/users/profile/${widget.userId}')
+      );
+
+      if (mounted) {
+        setState(() {
+          friendAvatar = jsonDecode(friendProfile.body)['avatar'];
+          myAvatar = jsonDecode(myProfile.body)['avatar'];
+        });
+      }
+    } catch (e) {
+      print('Error loading avatars: $e');
+    }
   }
 
   Future<void> _loadMessages() async {
     try {
-      final oldMessages = await chatService.loadMessages();
       setState(() {
-        // Clear existing messages before adding old ones
+        isLoading = true;
+      });
+
+      final result = await chatService.loadMessages(page: _currentPage, limit: _pageSize);
+      
+      setState(() {
         messages.clear();
-        messages.addAll(oldMessages);
+        messages.addAll(List<Map<String, String>>.from(result['messages']));
+        _hasMore = result['hasMore'];
         isLoading = false;
+      });
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController.hasClients) {
+          _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+        }
       });
     } catch (e) {
       setState(() {
         isLoading = false;
       });
       print('Error loading messages: $e');
+    }
+  }
+
+  Future<void> _loadMoreMessages() async {
+    if (_isLoadingMore) return;
+
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    try {
+      final result = await chatService.loadMessages(
+        page: _currentPage + 1,
+        limit: _pageSize,
+      );
+
+      setState(() {
+        _currentPage++;
+        messages.insertAll(0, List<Map<String, String>>.from(result['messages']));
+        _hasMore = result['hasMore'];
+        _isLoadingMore = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoadingMore = false;
+      });
+      print('Error loading more messages: $e');
     }
   }
 
@@ -116,6 +199,8 @@ class _ChatScreenState extends State<ChatScreen> {
     if (_controller.text.isNotEmpty) {
       chatService.sendMessage(_controller.text);
       _controller.clear();
+      // Scroll to bottom after sending
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
     }
   }
 
@@ -142,10 +227,117 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  Future<void> _initiateCall() async {
+    try {
+      chatService.sendMessage("📞 Calling...");
+
+      final url = Uri.parse('${Config.apiBaseUrl}/api/notifications/call');
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: json.encode({
+          'receiverId': widget.friendId,
+          'callerId': widget.userId,
+          'type': 'video_call',
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData['success'] == true) {
+          if (!mounted) return;
+
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => CallScreen(
+                channelName: responseData['channelName'],
+                token: responseData['token'], // Use the token from server
+                isOutgoing: true,
+                onCallEnded: () {
+                  chatService.sendMessage("📞 Call ended");
+                },
+                onCallRejected: () {
+                  chatService.sendMessage("📞 Call was declined");
+                },
+              ),
+            ),
+          );
+        } else {
+          throw Exception('Call failed: ${responseData['error']}');
+        }
+      } else {
+        throw Exception('Server error: ${response.statusCode}');
+      }
+    } catch (e) {
+      chatService.sendMessage("📞 Call failed");
+      print('Call error: $e');
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Call failed: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
     chatService.dispose();
     super.dispose();
+  }
+
+  Widget _buildAvatar(String? avatarUrl, bool isCurrentUser) {
+    if (avatarUrl != null && avatarUrl.isNotEmpty) {
+      return Padding(
+        padding: EdgeInsets.only(
+          left: isCurrentUser ? 4.0 : 8.0,
+          right: isCurrentUser ? 8.0 : 4.0,
+        ),
+        child: CachedNetworkImage(
+          imageUrl: avatarUrl,
+          imageBuilder: (context, imageProvider) => CircleAvatar(
+            backgroundImage: imageProvider,
+            radius: 20,
+          ),
+          placeholder: (context, url) => CircleAvatar(
+            backgroundColor: isCurrentUser 
+              ? Color.fromARGB(255, 3, 62, 72)
+              : Colors.grey,
+            radius: 20,
+            child: Icon(Icons.person, color: Colors.white, size: 20),
+          ),
+          errorWidget: (context, url, error) => CircleAvatar(
+            backgroundColor: isCurrentUser 
+              ? Color.fromARGB(255, 3, 62, 72)
+              : Colors.grey,
+            radius: 20,
+            child: Icon(Icons.person, color: Colors.white, size: 20),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: EdgeInsets.only(
+        left: isCurrentUser ? 4.0 : 8.0,
+        right: isCurrentUser ? 8.0 : 4.0,
+      ),
+      child: CircleAvatar(
+        backgroundColor: isCurrentUser 
+          ? Color.fromARGB(255, 3, 62, 72)
+          : Colors.grey,
+        radius: 20,
+        child: Icon(Icons.person, color: Colors.white, size: 20),
+      ),
+    );
   }
 
   Widget _buildMessageContent(Map<String, String> message) {
@@ -349,8 +541,20 @@ class _ChatScreenState extends State<ChatScreen> {
             messages.add(message);
           }
         }
+        // Scroll to bottom after setState
+        WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
       });
     });
+  }
+
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
   }
 
   @override
@@ -358,6 +562,12 @@ class _ChatScreenState extends State<ChatScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Chat'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.video_call),
+            onPressed: _initiateCall,
+          ),
+        ],
         backgroundColor: Colors.transparent, // Màu của AppBar
         elevation: 4.0, // Tạo hiệu ứng đổ bóng cho AppBar
         flexibleSpace: Container(
@@ -379,9 +589,22 @@ class _ChatScreenState extends State<ChatScreen> {
             child: isLoading
                 ? Center(child: CircularProgressIndicator())
                 : ListView.builder(
-                    itemCount: messages.length,
+                    controller: _scrollController,
+                    reverse: false,
+                    itemCount: messages.length + (_hasMore ? 1 : 0),
                     itemBuilder: (context, index) {
-                      final message = messages[index];
+                      if (index == 0 && _hasMore) {
+                        return Padding(
+                          padding: EdgeInsets.all(8.0),
+                          child: Center(
+                            child: _isLoadingMore
+                                ? CircularProgressIndicator()
+                                : Text('Pull to load more'),
+                          ),
+                        );
+                      }
+                      final actualIndex = _hasMore ? index - 1 : index;
+                      final message = messages[actualIndex];
                       final isCurrentUser = message['sender'] == widget.userId;
                       final isRecalled = message['isRecalled'] == 'true';
 
@@ -399,35 +622,11 @@ class _ChatScreenState extends State<ChatScreen> {
                           children: [
                             // Avatar cho người gửi khác
                             if (!isCurrentUser)
-                              const Padding(
-                                padding: EdgeInsets.only(left: 8.0, right: 4.0),
-                                child: CircleAvatar(
-                                  backgroundColor:
-                                      Colors.grey, // Màu xám cho avatar
-                                  radius: 20, // Kích thước avatar
-                                  child: Icon(
-                                    Icons.person, // Biểu tượng người dùng
-                                    color: Colors.white, // Màu icon
-                                    size: 20, // Kích thước icon
-                                  ),
-                                ),
-                              ),
+                              _buildAvatar(friendAvatar, false),
                             // Bong bóng tin nhắn
                             Flexible(child: _buildMessageContent(message)),
                             if (isCurrentUser)
-                              const Padding(
-                                padding: EdgeInsets.only(left: 4.0, right: 8.0),
-                                child: CircleAvatar(
-                                  backgroundColor: Color.fromARGB(
-                                      255, 3, 62, 72), // Màu xanh cho avatar
-                                  radius: 20, // Kích thước avatar
-                                  child: Icon(
-                                    Icons.person, // Biểu tượng người dùng
-                                    color: Colors.white, // Màu icon
-                                    size: 20, // Kích thước icon
-                                  ),
-                                ),
-                              ),
+                              _buildAvatar(myAvatar, true),
                           ],
                         ),
                       );
