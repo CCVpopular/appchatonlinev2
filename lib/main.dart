@@ -56,7 +56,7 @@ void main() async {
 
   runApp(
     ChangeNotifierProvider<ValueNotifier<ThemeMode>>(
-      create: (_) => ValueNotifier<ThemeMode>(initialThemeMode),
+      create: (_) => ValueNotifier<ThemeMode>(initialThemeMode),  
       child: const MyApp(),
     ),
   );

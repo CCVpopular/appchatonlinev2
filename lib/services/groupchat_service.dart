@@ -8,7 +8,7 @@ import 'SocketManager.dart';
 
 class GroupChatService {
   final String groupId;
-  late IO.Socket socket;
+  late IO.Socket _socket;
   final _messagesgroupStreamController =
       StreamController<List<Map<String, dynamic>>>.broadcast();
   final String baseUrl = Config.apiBaseUrl;
@@ -20,14 +20,17 @@ class GroupChatService {
     _loadMessages();
   }
 
+  // Make socket accessible
+  IO.Socket get socket => _socket;
+
   // Kết nối socket
   void _connectSocket() {
-    socket = SocketManager(baseUrl).getSocket();
+    _socket = SocketManager(baseUrl).getSocket();
 
     print('Connected to chat group');
 
     // Lắng nghe tin nhắn mới
-    socket.on('receiveGroupMessage', (data) {
+    _socket.on('receiveGroupMessage', (data) {
       final newMessage = {
         'sender': data['senderName'],
         'message': data['message'],
@@ -40,9 +43,9 @@ class GroupChatService {
         _messagesgroupStreamController.add(_currentMessages);
       }
     });
-    socket.emit('joinGroup', {'groupId': groupId});
+    _socket.emit('joinGroup', {'groupId': groupId});
 
-    socket.on('groupMessageRecalled', (data) {
+    _socket.on('groupMessageRecalled', (data) {
       _recallStreamController.add(data['messageId']);
     });
   }
@@ -116,7 +119,7 @@ class GroupChatService {
 
   // Gửi tin nhắn
   void sendMessage(String sender, String message) {
-    socket.emit('sendGroupMessage', {
+    _socket.emit('sendGroupMessage', {
       'groupId': groupId,
       'sender': sender,
       'message': message,
@@ -142,7 +145,7 @@ class GroupChatService {
 
       if (onProgress != null) onProgress(0.5); // Show 50% progress
 
-      socket.emit('sendGroupImage', {
+      _socket.emit('sendGroupImage', {
         'groupId': groupId,
         'sender': sender,
         'imageData': base64Image,
@@ -174,7 +177,7 @@ class GroupChatService {
 
       if (onProgress != null) onProgress(0.5); // Show 50% progress
 
-      socket.emit('sendGroupFile', {
+      _socket.emit('sendGroupFile', {
         'groupId': groupId,
         'sender': sender,
         'fileData': base64File,
@@ -190,10 +193,56 @@ class GroupChatService {
   }
 
   void recallMessage(String messageId) {
-    socket.emit('recallGroupMessage', {
+    _socket.emit('recallGroupMessage', {
       'messageId': messageId,
       'groupId': groupId,
     });
+  }
+
+  Future<String?> initializeGroupCall(String groupId) async {
+    try {
+      print('Initializing group call for group: $groupId');
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/groups/initialize-call'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'groupId': groupId,
+        }),
+      );
+
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['token'] != null) {
+          _addSystemMessage('Group call started');
+          return data['token'];
+        } else {
+          throw Exception('Token not found in response');
+        }
+      } else {
+        throw Exception('Failed to initialize call: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error initializing group call: $e');
+      return null;
+    }
+  }
+
+  void _addSystemMessage(String message) {
+    // Add system message to the messages stream
+    final systemMessage = {
+      'id': DateTime.now().millisecondsSinceEpoch.toString(),
+      'type': 'system',
+      'message': message,
+      'timestamp': DateTime.now().toIso8601String(),
+      'senderId': 'system',
+      'sender': 'System',
+    };
+    
+    // Add to messages stream
+    _messagesgroupStreamController.add([..._currentMessages, systemMessage]);
   }
 
   // Stream để lắng nghe tin nhắn
@@ -204,9 +253,9 @@ class GroupChatService {
 
   // Đóng socket và Stream
   void dispose() {
-    socket.emit('leaveGroup', {'groupId': groupId});
-    socket.off('receiveGroupMessage');
-    socket.disconnect();
+    _socket.emit('leaveGroup', {'groupId': groupId});
+    _socket.off('receiveGroupMessage');
+    _socket.disconnect();
     if (!_messagesgroupStreamController.isClosed) {
       _messagesgroupStreamController.close();
     }

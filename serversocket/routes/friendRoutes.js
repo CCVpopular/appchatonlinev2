@@ -50,9 +50,24 @@ router.get('/friends/:userId', async (req, res) => {
     const friends = await Friendship.find({
       $or: [{ requester: userId }, { receiver: userId }],
       status: 'accepted',
-    })      .populate('requester', 'username') // Lấy thông tin `username` từ bảng User
-    .populate('receiver', 'username');
-    res.send(friends);
+    })
+    .populate('requester', 'username avatar status lastSeen') // Include status and lastSeen
+    .populate('receiver', 'username avatar status lastSeen');
+    
+    // Transform the data to ensure status is included
+    const transformedFriends = friends.map(friend => ({
+      ...friend.toObject(),
+      requester: {
+        ...friend.requester.toObject(),
+        status: friend.requester.status || 'offline'
+      },
+      receiver: {
+        ...friend.receiver.toObject(),
+        status: friend.receiver.status || 'offline'
+      }
+    }));
+
+    res.send(transformedFriends);
   } catch (err) {
     res.status(500).send({ error: 'Failed to fetch friends' });
   }

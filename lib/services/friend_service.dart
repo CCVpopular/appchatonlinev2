@@ -26,6 +26,30 @@ class FriendService {
         _fetchFriends(data);
       }
     });
+
+    // Listen for user status changes
+    socket.on('userStatusChanged', (data) {
+      _updateFriendStatus(data['userId'], data['status']);
+    });
+  }
+
+  void _updateFriendStatus(String userId, String status) {
+    bool updated = false;
+    final updatedFriends = _friends.map((friend) {
+      if (friend['requester']['_id'] == userId) {
+        friend['requester']['status'] = status;
+        updated = true;
+      } else if (friend['receiver']['_id'] == userId) {
+        friend['receiver']['status'] = status;
+        updated = true;
+      }
+      return friend;
+    }).toList();
+
+    if (updated) {
+      _friends = updatedFriends;
+      _friendsController.add(_friends);
+    }
   }
 
   void dispose() {
