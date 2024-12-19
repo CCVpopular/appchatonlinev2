@@ -42,27 +42,14 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
-    messages.clear(); // Clear messages when initializing
+    _initializeChatService();
+  }
+
+  void _initializeChatService() {
     chatService = ChatService(widget.userId, widget.friendId);
-
-    _scrollController.addListener(_onScroll);
-    // Load old messages
+    messages.clear();
     _loadMessages();
-
-    // Listen for new messages
     _updateMessageStream();
-
-    // Listen for message recalls
-    chatService.recallStream.listen((messageId) {
-      setState(() {
-        final index = messages.indexWhere((msg) => msg['id'] == messageId);
-        if (index != -1) {
-          messages[index] = {...messages[index], 'isRecalled': 'true'};
-        }
-      });
-    });
-
-    // Initialize notification service with context
     NotificationService().init(widget.userId, context: context);
     _loadUserAvatars();
     DownloadService.initialize();
@@ -734,6 +721,8 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                     child: TextField(
                       controller: _controller,
+                      maxLength: 1000, // Add character limit
+                      buildCounter: (context, {required currentLength, required isFocused, maxLength}) => Container(), // Hide counter
                       decoration: const InputDecoration(
                         hintText: 'Enter a message',
                         border: InputBorder

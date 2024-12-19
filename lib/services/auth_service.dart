@@ -134,7 +134,7 @@ class AuthService {
     try {
       // Add any cleanup code for sockets or other connections
       final socketManager = SocketManager(Config.apiBaseUrl);
-      await socketManager.disconnect();
+      // await socketManager.disconnect();
     } catch (e) {
       print('Error closing connections: $e');
     }
