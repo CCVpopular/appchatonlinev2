@@ -43,8 +43,71 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Gemini Chat Bot'),
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(70), // Điều chỉnh chiều cao của AppBar
+        child: Container(
+          margin: EdgeInsets.only(top: 0, left: 10, right: 10, bottom: 10),
+          child: AppBar(
+            title: Padding(
+              padding: EdgeInsets.only(
+                  left: 15, bottom: 15), // Thêm padding cho tiêu đề
+              child: const Text(
+                'Gemini Chat Bot',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            backgroundColor: Colors.transparent, // Nền trong suốt
+            elevation: 0, // Xóa bóng đổ mặc định của AppBar
+            flexibleSpace: Stack(
+              children: [
+                // Nền thứ nhất (dưới cùng)
+                Positioned(
+                  top: 20,
+                  left: 20,
+                  right: 0,
+                  bottom: 1,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Color.fromARGB(255, 57, 51, 66)
+                          : Color.fromARGB(77, 83, 32, 120),
+                      borderRadius: BorderRadius.circular(25),
+                      border: Border.all(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white
+                            : Colors.black,
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                ),
+                // Nền thứ hai (chồng lên nền thứ nhất)
+                Positioned(
+                  top: 5,
+                  left: 5,
+                  right: 8,
+                  bottom: 10,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Color.fromARGB(255, 77, 68, 89)
+                          : Color.fromARGB(255, 255, 255, 255),
+                      borderRadius: BorderRadius.circular(25),
+                      border: Border.all(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white
+                            : Colors.black,
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
       body: Column(
         children: [
@@ -55,43 +118,132 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                 final message = _messages[index];
                 final isUserMessage = message['sender'] == 'user';
                 return Align(
-                  alignment: isUserMessage ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Container(
-                    margin: const EdgeInsets.all(8.0),
-                    padding: const EdgeInsets.all(12.0),
-                    decoration: BoxDecoration(
-                      color: isUserMessage ? Colors.blue[200] : Colors.grey[300],
-                      borderRadius: BorderRadius.circular(10),
+                  alignment: isUserMessage
+                      ? Alignment.centerRight
+                      : Alignment.centerLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 8.0, horizontal: 16.0),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Avatar cho người nhận
+                        if (!isUserMessage)
+                          CircleAvatar(
+                            backgroundImage: AssetImage(
+                                'assets/avatar.png'), // Đường dẫn đến avatar
+                          ),
+                        SizedBox(width: 8),
+                        // Bong bóng chat
+                        Container(
+                          padding: EdgeInsets.all(12),
+                          constraints: BoxConstraints(
+                            maxWidth:
+                                250, // Bạn có thể điều chỉnh kích thước tối đa của bong bóng
+                          ),
+                          decoration: BoxDecoration(
+                            color: isUserMessage
+                                ? Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? Colors.blueGrey[800]
+                                    : Colors.blue[200]
+                                : Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? Colors.grey[700]
+                                    : Colors.grey[300],
+                            borderRadius: BorderRadius.circular(15),
+                            border: Border.all(
+                              color: isUserMessage
+                                  ? Theme.of(context).brightness ==
+                                          Brightness.dark
+                                      ? Colors.blue[200]!
+                                      : Colors.blue[600]!
+                                  : Theme.of(context).brightness ==
+                                          Brightness.dark
+                                      ? Colors.grey[300]!
+                                      : const Color.fromARGB(255, 178, 178, 178)!,
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Text(
+                            message['message'] ?? '',
+                            style: TextStyle(
+                              color:
+                                  isUserMessage ? Colors.white : Colors.black,
+                            ),
+                            softWrap: true, // Cho phép tự động xuống dòng
+                            overflow:
+                                TextOverflow.visible, // Không cắt bớt văn bản
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        // Avatar cho người gửi
+                        if (isUserMessage)
+                          CircleAvatar(
+                            backgroundImage: AssetImage('assets/avatar.png'),
+                          ),
+                      ],
                     ),
-                    child: Text(message['message'] ?? ''),
                   ),
                 );
               },
             ),
           ),
-          if (_isLoading)
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: CircularProgressIndicator(),
-            ),
           Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _messageController,
-                    decoration: InputDecoration(
-                      hintText: 'Enter your message...',
-                      border: OutlineInputBorder(),
+            padding: const EdgeInsets.all(10),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Color.fromARGB(255, 33, 33, 33) // Nền tối
+                    : Color.fromARGB(255, 255, 255, 255), // Nền sáng
+                borderRadius: BorderRadius.circular(25),
+                border: Border.all(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white // Viền trắng khi chế độ tối
+                      : Colors.black, // Viền đen khi chế độ sáng
+                  width: 2,
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 10),
+                        child: TextField(
+                          controller: _messageController,
+                          decoration: InputDecoration(
+                            hintText: 'Enter your message...',
+                            border: InputBorder.none, // Xóa viền của TextField
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Color.fromARGB(107, 128, 83, 180)
+                            : Color.fromARGB(255, 255, 255, 255),
+                        border: Border.all(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.white
+                              : Colors.black,
+                          width: 2,
+                        ),
+                        shape: BoxShape.circle,
+                      ),
+                      child: IconButton(
+                        icon: Icon(Icons.send),
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? const Color.fromARGB(255, 255, 255, 255)
+                            : const Color.fromARGB(255, 103, 48, 129),
+                        onPressed: _sendMessage,
+                      ),
+                    ),
+                  ],
                 ),
-                IconButton(
-                  icon: Icon(Icons.send),
-                  onPressed: _sendMessage,
-                ),
-              ],
+              ),
             ),
           ),
         ],
