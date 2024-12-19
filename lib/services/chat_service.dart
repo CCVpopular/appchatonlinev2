@@ -22,7 +22,6 @@ class ChatService {
   }
 
   void _connectSocket() {
-    // Remove any existing event listeners
     socket.off('receiveMessage');
     socket.off('messageRecalled');
     
