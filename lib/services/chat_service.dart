@@ -11,6 +11,7 @@ class ChatService {
   late IO.Socket socket;
   final _messageStreamController = StreamController<Map<String, String>>.broadcast();
   final _recallStreamController = StreamController<String>.broadcast();
+  final _latestMessageStreamController = StreamController<Map<String, dynamic>>.broadcast();
   final String userId;
   final String friendId;
 
@@ -19,9 +20,11 @@ class ChatService {
   ChatService(this.userId, this.friendId) {
     socket = SocketManager(Config.apiBaseUrl).getSocket();
     _connectSocket();
+    _listenForLatestMessages();
   }
 
   void _connectSocket() {
+    // Remove any existing event listeners
     socket.off('receiveMessage');
     socket.off('messageRecalled');
     
@@ -44,6 +47,12 @@ class ChatService {
     socket.emit('leaveRoom', {'userId': userId, 'friendId': friendId});
     // Join new room
     socket.emit('joinRoom', {'userId': userId, 'friendId': friendId});
+  }
+
+  void _listenForLatestMessages() {
+    socket.on('latestMessage', (data) {
+      _latestMessageStreamController.add(data);
+    });
   }
 
   void sendMessage(String message) {
@@ -130,6 +139,7 @@ class ChatService {
 
   Stream<Map<String, String>> get oldMessageStream => _messageStreamController.stream;
   Stream<String> get recallStream => _recallStreamController.stream;
+  Stream<Map<String, dynamic>> get latestMessageStream => _latestMessageStreamController.stream;
 
   void dispose() {
     socket.emit('leaveRoom', {'userId': userId, 'friendId': friendId});
@@ -137,6 +147,7 @@ class ChatService {
     socket.off('messageRecalled');
     _messageStreamController.close();
     _recallStreamController.close();
+    _latestMessageStreamController.close();
   }
 
   // Hàm lấy tin nhắn cũ

@@ -246,6 +246,28 @@ io.on('connection', (socket) => {
         const response = await admin.messaging().send(payload);
         console.log('Notification sent successfully:', response);
       }
+
+      // Emit latest message update to both users
+      const latestMessageData = {
+        friendId: sender,
+        message: message,
+        timestamp: new Date(),
+        type: 'text',
+        isRecalled: false
+      };
+      
+      // Emit to receiver
+      io.to(receiver).emit('latestMessage', {
+        ...latestMessageData,
+        friendId: sender
+      });
+      
+      // Emit to sender
+      io.to(sender).emit('latestMessage', {
+        ...latestMessageData,
+        friendId: receiver
+      });
+
     } catch (err) {
       console.error('Error handling sendMessage:', err);
     }
@@ -304,6 +326,25 @@ io.on('connection', (socket) => {
       });
 
       fs.unlinkSync(tempPath);
+
+      // Emit latest message update for image
+      const latestMessageData = {
+        friendId: sender,
+        message: '[Image]',
+        timestamp: new Date(),
+        type: 'image',
+        isRecalled: false
+      };
+      
+      io.to(receiver).emit('latestMessage', {
+        ...latestMessageData,
+        friendId: sender
+      });
+      
+      io.to(sender).emit('latestMessage', {
+        ...latestMessageData,
+        friendId: receiver
+      });
 
     } catch (err) {
       console.error('Error handling image upload:', err);
@@ -426,6 +467,25 @@ io.on('connection', (socket) => {
 
       // Cleanup temp file
       fs.unlinkSync(tempPath);
+
+      // Emit latest message update for file
+      const latestMessageData = {
+        friendId: sender,
+        message: `[File: ${fileName}]`,
+        timestamp: new Date(),
+        type: 'file',
+        isRecalled: false
+      };
+      
+      io.to(receiver).emit('latestMessage', {
+        ...latestMessageData,
+        friendId: sender
+      });
+      
+      io.to(sender).emit('latestMessage', {
+        ...latestMessageData,
+        friendId: receiver
+      });
 
     } catch (err) {
       console.error('Error handling file upload:', err);
@@ -586,6 +646,25 @@ io.on('connection', (socket) => {
         messageId,
         isRecalled: true,
         timestamp: new Date()
+      });
+
+      // Emit latest message update for recalled message
+      const latestMessageData = {
+        friendId: sender,
+        message: 'Message recalled',
+        timestamp: new Date(),
+        type: 'text',
+        isRecalled: true
+      };
+      
+      io.to(receiver).emit('latestMessage', {
+        ...latestMessageData,
+        friendId: sender
+      });
+      
+      io.to(sender).emit('latestMessage', {
+        ...latestMessageData,
+        friendId: receiver
       });
 
     } catch (err) {
