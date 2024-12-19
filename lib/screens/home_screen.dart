@@ -57,71 +57,83 @@ class _MyHomePageState extends State<MyHomePage> {
                 SafeArea(
                   child: Column(
                     children: [
-                      // Sử dụng Container để bọc BottomNavigationBar
                       Container(
                         decoration: BoxDecoration(
-                          color: colorScheme.surface, // Màu nền của Container
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Color.fromARGB(
+                                  72, 184, 142, 233) // Màu nền tối: tăng độ rõ
+                              : Color.fromARGB(100, 194, 164,
+                                  204), // Màu nền sáng: tăng độ sáng và rõ hơn
+                          // Màu nền sáng
                           border: Border.all(
-                            color: Colors.black, // Viền đen xung quanh
-                            width: 2, // Độ dày của viền
+                            color:
+                                Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.white // Viền trắng khi chế độ tối
+                                    : Colors.black, // Viền đen khi chế độ sáng
+                            width: 2, // Độ dày viền
                           ),
                           borderRadius:
-                              BorderRadius.circular(200), // Bo góc của nền
+                              BorderRadius.circular(30), // Bo góc nhẹ hơn
                         ),
                         padding: EdgeInsets.symmetric(
-                            vertical: 0), // Padding trên dưới
+                            vertical: 10, horizontal: 10), // Padding trên dưới
                         margin: EdgeInsets.symmetric(
                             horizontal: 10, vertical: 10), // Margin bên ngoài
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(
-                              150), // Bo góc cho cả BottomNavigationBar
-                          child: BottomNavigationBar(
-                            items: [
-                              BottomNavigationBarItem(
-                                icon: _buildIcon(Icons.home, 0),
-                                label: 'Friend',
+                        child: Material(
+                          elevation:
+                              0, // Tạo hiệu ứng nổi cho toàn bộ BottomNavigationBar
+                          color: Colors.transparent, // Đảm bảo nền trong suốt
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(
+                                30), // Bo góc cho cả BottomNavigationBar
+                            child: BottomNavigationBar(
+                              items: [
+                                BottomNavigationBarItem(
+                                  icon: _buildIcon(Icons.home, 0),
+                                  label: 'Friend',
+                                ),
+                                BottomNavigationBarItem(
+                                  icon: _buildIcon(Icons.group, 1),
+                                  label: 'Group',
+                                ),
+                                BottomNavigationBarItem(
+                                  icon: _buildIcon(Icons.chat, 2),
+                                  label: 'Chat Bot',
+                                ),
+                                BottomNavigationBarItem(
+                                  icon: _buildIcon(Icons.settings, 3),
+                                  label: 'Setting',
+                                ),
+                              ],
+                              currentIndex: selectedIndex,
+                              selectedItemColor: colorScheme
+                                  .primary, // Màu của icon khi được chọn
+                              unselectedItemColor:
+                                  colorScheme.onSurface.withOpacity(0.6),
+                              backgroundColor: null, // Bỏ nền mặc định
+                              showSelectedLabels:
+                                  true, // Hiển thị nhãn khi chọn
+                              showUnselectedLabels:
+                                  false, // Ẩn nhãn khi không chọn
+                              onTap: (value) {
+                                setState(() {
+                                  selectedIndex = value;
+                                });
+                              },
+                              selectedLabelStyle: TextStyle(
+                                fontWeight:
+                                    FontWeight.bold, // Làm đậm label khi chọn
                               ),
-                              BottomNavigationBarItem(
-                                icon: _buildIcon(Icons.group, 1),
-                                label: 'Group',
+                              unselectedLabelStyle: TextStyle(
+                                fontWeight: FontWeight
+                                    .normal, // Làm mờ label khi không chọn
                               ),
-                              BottomNavigationBarItem(
-                                icon: _buildIcon(Icons.chat, 2),
-                                label: 'Chat Bot',
-                              ),
-                              BottomNavigationBarItem(
-                                icon: _buildIcon(Icons.settings, 3),
-                                label: 'Setting',
-                              ),
-                            ],
-                            currentIndex: selectedIndex,
-                            selectedItemColor: colorScheme
-                                .primary, // Màu của icon khi được chọn
-                            unselectedItemColor:
-                                colorScheme.onSurface.withOpacity(0.6),
-                            backgroundColor:
-                                Colors.transparent, // Bỏ nền mặc định
-                            showSelectedLabels: true, // Hiển thị nhãn khi chọn
-                            showUnselectedLabels:
-                                false, // Ẩn nhãn khi không chọn
-                            onTap: (value) {
-                              setState(() {
-                                selectedIndex = value;
-                              });
-                            },
-                            selectedLabelStyle: TextStyle(
-                              fontWeight:
-                                  FontWeight.bold, // Làm đậm label khi chọn
+                              iconSize: 30, // Chỉnh kích thước icon
+                              selectedFontSize:
+                                  14, // Chỉnh kích thước font khi chọn
+                              unselectedFontSize:
+                                  12, // Chỉnh kích thước font khi không chọn
                             ),
-                            unselectedLabelStyle: TextStyle(
-                              fontWeight: FontWeight
-                                  .normal, // Làm mờ label khi không chọn
-                            ),
-                            iconSize: 30, // Chỉnh kích thước icon
-                            selectedFontSize:
-                                14, // Chỉnh kích thước font khi chọn
-                            unselectedFontSize:
-                                12, // Chỉnh kích thước font khi không chọn
                           ),
                         ),
                       ),
@@ -196,7 +208,7 @@ class _MyHomePageState extends State<MyHomePage> {
     return AnimatedContainer(
       duration: Duration(milliseconds: 300),
       transform: isSelected
-          ? Matrix4.translationValues(0, -15, 0)
+          ? Matrix4.translationValues(0, -5, 0)
           : Matrix4.identity(), // Lệch lên khi chọn
       decoration: BoxDecoration(
         shape: BoxShape.circle,
@@ -218,13 +230,26 @@ class _MyHomePageState extends State<MyHomePage> {
               ]
             : [],
       ),
-      padding: EdgeInsets.all(10),
-      child: Icon(
-        icon,
-        size: isSelected ? 30 : 24,
-        color: isSelected
-            ? Theme.of(context).colorScheme.primary
-            : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+      padding: EdgeInsets.all(
+          isSelected ? 12 : 10), // Thêm khoảng cách cho viền khi chọn
+      child: ClipOval(
+        child: Container(
+          color: isSelected
+              ? Theme.of(context)
+                  .colorScheme
+                  .primary
+                  .withOpacity(0.1) // Tạo nền mờ khi chọn
+              : Colors.transparent, // Không có nền khi không chọn
+          child: Icon(
+            icon,
+            size: isSelected
+                ? 30
+                : 24, // Kích thước của icon khi chọn và không chọn
+            color: isSelected
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+          ),
+        ),
       ),
     );
   }
