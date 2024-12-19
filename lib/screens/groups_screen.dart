@@ -120,6 +120,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
                         builder: (context) => GroupChatScreen(
                           groupId: group['id'],
                           userId: widget.userId,
+                          groupNameReal: group['name'],
                         ),
                       ),
                     );

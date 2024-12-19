@@ -33,6 +33,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final ImagePicker _picker = ImagePicker();
   String? friendAvatar;
   String? myAvatar;
+  String? friendName;
   final ScrollController _scrollController = ScrollController();
   int _currentPage = 1;
   static const int _pageSize = 20;
@@ -75,6 +76,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
       if (mounted) {
         setState(() {
+          friendName = jsonDecode(friendProfile.body)['username'];
           friendAvatar = jsonDecode(friendProfile.body)['avatar'];
           myAvatar = jsonDecode(myProfile.body)['avatar'];
         });
@@ -618,7 +620,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Chat'),
+        title: Text(friendName ?? ''),
         actions: [
           IconButton(
             icon: const Icon(Icons.video_call),

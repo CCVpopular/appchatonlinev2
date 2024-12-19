@@ -15,8 +15,9 @@ import 'package:http/http.dart' as http;
 class GroupChatScreen extends StatefulWidget {
   final String groupId;
   final String userId;
+  final String groupNameReal;
 
-  const GroupChatScreen({Key? key, required this.groupId, required this.userId}) : super(key: key);
+  const GroupChatScreen({Key? key, required this.groupId, required this.userId, required this.groupNameReal}) : super(key: key);
 
   @override
   _GroupChatScreenState createState() => _GroupChatScreenState();
@@ -680,7 +681,14 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
               ),
             ),
             SizedBox(width: 8),
-            Text(groupName ?? 'Group Chat'),
+            Expanded(
+              child: Text(
+                widget.groupNameReal,
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+                style: TextStyle(fontSize: 20),
+              ),
+            ),
           ],
         ),
         actions: [
