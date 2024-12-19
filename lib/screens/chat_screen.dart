@@ -734,6 +734,8 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                     child: TextField(
                       controller: _controller,
+                      maxLength: 1000, // Add character limit
+                      buildCounter: (context, {required currentLength, required isFocused, maxLength}) => Container(), // Hide counter
                       decoration: const InputDecoration(
                         hintText: 'Enter a message',
                         border: InputBorder

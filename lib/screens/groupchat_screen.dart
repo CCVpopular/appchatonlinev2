@@ -799,6 +799,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                 Expanded(
                   child: TextField(
                     controller: _controller,
+                    maxLength: 1000, // Add character limit
+                    buildCounter: (context, {required currentLength, required isFocused, maxLength}) => Container(), // Hide counter
                     decoration: InputDecoration(hintText: 'Enter a message'),
                   ),
                 ),
