@@ -178,7 +178,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               top: 30,
               left: 30,
               right: 0,
-              bottom: 250,
+              bottom: 300,
               child: Container(
                 height: 250, // Đặt chiều cao cho nền thứ nhất
                 decoration: BoxDecoration(
@@ -200,7 +200,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               top: 10, // Điều chỉnh vị trí của nền thứ hai
               left: 10,
               right: 10,
-              bottom: 260,
+              bottom: 310,
               child: Container(
                 height: 200, // Đặt chiều cao cho nền thứ hai
                 decoration: BoxDecoration(
@@ -224,7 +224,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               top: 350,
               left: 30,
               right: 0,
-              bottom: 70,
+              bottom: 120,
               child: Container(
                 height: 250, // Đặt chiều cao cho nền thứ nhất
                 decoration: BoxDecoration(
@@ -246,7 +246,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               top: 330, // Điều chỉnh vị trí của nền thứ hai
               left: 10,
               right: 10,
-              bottom: 80,
+              bottom: 130,
               child: Container(
                 height: 200, // Đặt chiều cao cho nền thứ hai
                 decoration: BoxDecoration(
@@ -275,15 +275,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   GestureDetector(
                     onTap: _pickAndUploadImage,
-                    child: CircleAvatar(
-                      radius: 50,
-                      backgroundImage:
-                          avatarUrl != null ? NetworkImage(avatarUrl!) : null,
-                      child: avatarUrl == null
-                          ? Icon(Icons.person, size: 50)
-                          : null,
+                    child: Builder(
+                      builder: (context) {
+                        // Kiểm tra chế độ nền
+                        bool isDarkMode =
+                            Theme.of(context).brightness == Brightness.dark;
+
+                        return Container(
+                          padding: EdgeInsets.all(2), // Điều chỉnh độ dày viền
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isDarkMode
+                                ? Colors.white
+                                : Colors.black, // Màu viền thay đổi theo nền
+                          ),
+                          child: CircleAvatar(
+                            radius: 50, // Giảm kích thước để thêm padding
+                            backgroundImage: avatarUrl != null
+                                ? NetworkImage(avatarUrl!)
+                                : null,
+                            child: avatarUrl == null
+                                ? Icon(Icons.person,
+                                    size:
+                                        48) // Kích thước icon phù hợp với avatar nhỏ hơn
+                                : null,
+                          ),
+                        );
+                      },
                     ),
                   ),
+
                   TextButton(
                     onPressed: _pickAndUploadImage,
                     child: Text('Change Avatar'),
@@ -447,8 +468,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       child: Icon(
                         Icons.logout,
                         color: Theme.of(context).brightness == Brightness.dark
-                            ? Color.fromARGB(255, 255, 124, 115) // Màu icon khi chế độ tối
-                            : Color.fromARGB(255, 166, 39, 0), // Màu icon khi chế độ sáng
+                            ? Color.fromARGB(
+                                255, 255, 124, 115) // Màu icon khi chế độ tối
+                            : Color.fromARGB(
+                                255, 166, 39, 0), // Màu icon khi chế độ sáng
                       ),
                     ),
                     title: Padding(
@@ -463,8 +486,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             style: TextStyle(
                               color: Theme.of(context).brightness ==
                                       Brightness.dark
-                                  ? Color.fromARGB(255, 255, 124, 115) // Màu chữ khi chế độ tối
-                                  : Color.fromARGB(255, 166, 39, 0), // Màu chữ khi chế độ sáng
+                                  ? Color.fromARGB(255, 255, 124,
+                                      115) // Màu chữ khi chế độ tối
+                                  : Color.fromARGB(255, 166, 39,
+                                      0), // Màu chữ khi chế độ sáng
                               fontWeight: FontWeight.bold, // Chữ đậm
                             ),
                           ),
