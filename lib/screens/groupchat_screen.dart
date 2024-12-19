@@ -43,11 +43,16 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     super.initState();
     groupChatService = GroupChatService(widget.groupId);
     _setupScrollController();
+    
+    // Update recall stream listener
     groupChatService.recallStream.listen((messageId) {
       setState(() {
-        final index = _currentMessages.indexWhere((msg) => msg['id'] == messageId);
+        final index = _currentMessages.indexWhere((msg) => 
+          (msg['_id'] ?? msg['id']) == messageId);
         if (index != -1) {
           _currentMessages[index]['isRecalled'] = true;
+          // Trigger UI update since we're modifying the list directly
+          _currentMessages = List.from(_currentMessages);
         }
       });
     });
