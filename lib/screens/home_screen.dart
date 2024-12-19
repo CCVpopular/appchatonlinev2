@@ -80,42 +80,77 @@ class _MyHomePageState extends State<MyHomePage> {
               children: [
                 Expanded(child: mainArea),
                 SafeArea(
-                  child: BottomNavigationBar(
-                    items: [
-                      BottomNavigationBarItem(
-                        icon: _buildIcon(Icons.home, 0),
-                        label: 'Friend',
-                      ),
-                      BottomNavigationBarItem(
-                        icon: _buildIcon(Icons.group, 1),
-                        label: 'Group',
-                      ),
-                      BottomNavigationBarItem(
-                        icon: _buildIcon(Icons.chat, 2),
-                        label: 'Chat Bot',
-                      ),
-                      BottomNavigationBarItem(
-                        icon: _buildIcon(Icons.settings, 3),
-                        label: 'Setting',
+                  child: Column(
+                    children: [
+                      // Sử dụng Container để bọc BottomNavigationBar
+                      Container(
+                        decoration: BoxDecoration(
+                          color: colorScheme.surface, // Màu nền của Container
+                          border: Border.all(
+                            color: Colors.black, // Viền đen xung quanh
+                            width: 2, // Độ dày của viền
+                          ),
+                          borderRadius:
+                              BorderRadius.circular(200), // Bo góc của nền
+                        ),
+                        padding: EdgeInsets.symmetric(
+                            vertical: 0), // Padding trên dưới
+                        margin: EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 10), // Margin bên ngoài
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(
+                              150), // Bo góc cho cả BottomNavigationBar
+                          child: BottomNavigationBar(
+                            items: [
+                              BottomNavigationBarItem(
+                                icon: _buildIcon(Icons.home, 0),
+                                label: 'Friend',
+                              ),
+                              BottomNavigationBarItem(
+                                icon: _buildIcon(Icons.group, 1),
+                                label: 'Group',
+                              ),
+                              BottomNavigationBarItem(
+                                icon: _buildIcon(Icons.chat, 2),
+                                label: 'Chat Bot',
+                              ),
+                              BottomNavigationBarItem(
+                                icon: _buildIcon(Icons.settings, 3),
+                                label: 'Setting',
+                              ),
+                            ],
+                            currentIndex: selectedIndex,
+                            selectedItemColor: colorScheme
+                                .primary, // Màu của icon khi được chọn
+                            unselectedItemColor:
+                                colorScheme.onSurface.withOpacity(0.6),
+                            backgroundColor:
+                                Colors.transparent, // Bỏ nền mặc định
+                            showSelectedLabels: true, // Hiển thị nhãn khi chọn
+                            showUnselectedLabels:
+                                false, // Ẩn nhãn khi không chọn
+                            onTap: (value) {
+                              setState(() {
+                                selectedIndex = value;
+                              });
+                            },
+                            selectedLabelStyle: TextStyle(
+                              fontWeight:
+                                  FontWeight.bold, // Làm đậm label khi chọn
+                            ),
+                            unselectedLabelStyle: TextStyle(
+                              fontWeight: FontWeight
+                                  .normal, // Làm mờ label khi không chọn
+                            ),
+                            iconSize: 30, // Chỉnh kích thước icon
+                            selectedFontSize:
+                                14, // Chỉnh kích thước font khi chọn
+                            unselectedFontSize:
+                                12, // Chỉnh kích thước font khi không chọn
+                          ),
+                        ),
                       ),
                     ],
-                    currentIndex: selectedIndex,
-                    selectedItemColor: colorScheme.primary, // Màu của icon khi được chọn
-                    unselectedItemColor: colorScheme.onSurface.withOpacity(0.6),
-                    backgroundColor: colorScheme.surface, // Màu nền của navigation
-                    showSelectedLabels: true, // Hiển thị nhãn khi chọn
-                    showUnselectedLabels: false, // Ẩn nhãn khi không chọn
-                    onTap: (value) {
-                      setState(() {
-                        selectedIndex = value;
-                      });
-                    },
-                    selectedLabelStyle: TextStyle(
-                      fontWeight: FontWeight.bold, // Làm đậm label khi chọn
-                    ),
-                    unselectedLabelStyle: TextStyle(
-                      fontWeight: FontWeight.normal, // Làm mờ label khi không chọn
-                    ),
                   ),
                 ),
               ],
@@ -150,7 +185,8 @@ class _MyHomePageState extends State<MyHomePage> {
                       size: 30, // Kích thước lớn hơn khi chọn
                     ),
                     unselectedIconTheme: IconThemeData(
-                      color: colorScheme.onSurface.withOpacity(0.6), // Màu của icon khi không chọn
+                      color: colorScheme.onSurface
+                          .withOpacity(0.6), // Màu của icon khi không chọn
                       size: 28, // Kích thước nhỏ hơn khi không chọn
                     ),
                     backgroundColor: colorScheme.surface,
@@ -159,12 +195,14 @@ class _MyHomePageState extends State<MyHomePage> {
                         selectedIndex = value;
                       });
                     },
-                    labelType: NavigationRailLabelType.none, // Ẩn nhãn khi không chọn
+                    labelType:
+                        NavigationRailLabelType.none, // Ẩn nhãn khi không chọn
                     selectedLabelTextStyle: TextStyle(
                       fontWeight: FontWeight.bold, // Làm đậm nhãn khi chọn
                     ),
                     unselectedLabelTextStyle: TextStyle(
-                      fontWeight: FontWeight.normal, // Làm mờ nhãn khi không chọn
+                      fontWeight:
+                          FontWeight.normal, // Làm mờ nhãn khi không chọn
                     ),
                   ),
                 ),
@@ -182,14 +220,23 @@ class _MyHomePageState extends State<MyHomePage> {
     var isSelected = selectedIndex == index;
     return AnimatedContainer(
       duration: Duration(milliseconds: 300),
-      transform: isSelected ? Matrix4.translationValues(0, -15, 0) : Matrix4.identity(), // Lệch lên khi chọn
+      transform: isSelected
+          ? Matrix4.translationValues(0, -15, 0)
+          : Matrix4.identity(), // Lệch lên khi chọn
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: isSelected ? Colors.blue.withOpacity(0.2) : Colors.transparent,
+        color: Colors.transparent, // Nền tròn trong suốt
+        border: Border.all(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.white // Viền trắng khi chế độ tối
+              : Colors.black, // Viền đen khi chế độ sáng
+          width: 2, // Độ dày viền
+        ),
         boxShadow: isSelected
             ? [
                 BoxShadow(
-                  color: Colors.blue.withOpacity(0.4),
+                  color:
+                      const Color.fromARGB(255, 209, 182, 221).withOpacity(0.4),
                   blurRadius: 10,
                   offset: Offset(0, 2),
                 )
