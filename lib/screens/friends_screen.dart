@@ -122,7 +122,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
     return Text(
       messageText,
       style: const TextStyle(
-        color: Colors.black54,
+        //color: Colors.black54,
         fontSize: 13,
         height: 1.5,
       ),
@@ -218,53 +218,119 @@ class _FriendsScreenState extends State<FriendsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Friends'),
-        backgroundColor: Colors.transparent, // Màu của AppBar
-        elevation: 4.0, // Tạo hiệu ứng đổ bóng cho AppBar
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color.fromARGB(207, 70, 131, 180), // Màu thứ hai
-                Color.fromARGB(41, 130, 190, 197), // Màu đầu tiên
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(70), // Điều chỉnh chiều cao của AppBar
+        child: Container(
+          margin: EdgeInsets.only(
+              top: 0, left: 10, right: 10, bottom: 10), // Thêm margin xung quanh AppBar
+          child: AppBar(
+            title: Padding(
+              padding: EdgeInsets.only(left: 15,bottom: 15), // Thêm padding cho tiêu đề
+              child: const Text(
+                'Friends',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            backgroundColor: Colors.transparent, // Nền trong suốt
+            elevation: 0, // Xóa bóng đổ mặc định của AppBar
+            flexibleSpace: Stack(
+              // Sử dụng Stack để chồng các phần nền
+              children: [
+                // Nền thứ nhất (dưới cùng)
+                Positioned(
+                  top: 20, // Điều chỉnh vị trí nền thứ nhất
+                  left: 20,
+                  right: 0,
+                  bottom: 1,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Color.fromARGB(255, 57, 51, 66)  // Nền tối
+                          : Color.fromARGB(77, 83, 32, 120), // Nền sáng
+                      borderRadius: BorderRadius.circular(25), // Bo góc
+                      border: Border.all(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white // Viền trắng khi chế độ tối
+                            : Colors.black, // Viền đen khi chế độ sáng
+                        width: 2, // Độ dày viền
+                      ),
+                    ),
+                  ),
+                ),
+                // Nền thứ hai (chồng lên nền thứ nhất)
+                Positioned(
+                  top:
+                      5, // Điều chỉnh vị trí nền thứ hai (giảm top để nền thứ hai nhỏ hơn)
+                  left: 5, // Điều chỉnh khoảng cách từ bên trái
+                  right: 8, // Điều chỉnh khoảng cách từ bên phải
+                  bottom: 10, // Điều chỉnh khoảng cách từ dưới
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Color.fromARGB(
+                              255, 77, 68, 89) // Nền nhẹ màu xám khi chế độ tối
+                          : Color.fromARGB(255, 255, 255,
+                              255), // Nền nhẹ màu trắng khi chế độ sáng
+                      borderRadius: BorderRadius.circular(25), // Bo góc
+                      border: Border.all(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white // Viền trắng khi chế độ tối
+                            : Colors.black, // Viền đen khi chế độ sáng
+                        width: 2, // Độ dày viền
+                      ),  
+                    ),
+                  ),
+                ),
               ],
             ),
+            actions: [
+              Padding(
+                padding:
+                    EdgeInsets.only(right: 10), // Thêm padding cho các icon
+                child: IconButton(
+                  icon: Icon(Icons.refresh),
+                  onPressed: () {
+                    friendService.getFriends(widget.userId);
+                  },
+                ),
+              ),
+              Padding(
+                padding:
+                    EdgeInsets.only(right: 10), // Thêm padding cho các icon
+                child: IconButton(
+                  icon: Icon(Icons.person_add),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            AddFriendScreen(userId: widget.userId),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              Padding(
+                padding:
+                    EdgeInsets.only(right: 10), // Thêm padding cho các icon
+                child: IconButton(
+                  icon: Icon(Icons.group),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            FriendRequestsScreen(userId: widget.userId),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.refresh),
-            onPressed: () {
-              friendService.getFriends(widget.userId);
-            },
-          ),
-          IconButton(
-            icon: Icon(Icons.person_add),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => AddFriendScreen(userId: widget.userId),
-                ),
-              );
-            },
-          ),
-          IconButton(
-            icon: Icon(Icons.group),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) =>
-                      FriendRequestsScreen(userId: widget.userId),
-                ),
-              );
-            },
-          ),
-        ],
       ),
       body: StreamBuilder<List<dynamic>>(
         stream: friendService.friendsStream,
@@ -292,7 +358,8 @@ class _FriendsScreenState extends State<FriendsScreen> {
 
               // Print debug information
               print('Friend ID: ${friendData['_id']}');
-              print('Latest message for this friend: ${latestMessages[friendData['_id']]}');
+              print(
+                  'Latest message for this friend: ${latestMessages[friendData['_id']]}');
 
               return Container(
                 margin:
@@ -307,11 +374,15 @@ class _FriendsScreenState extends State<FriendsScreen> {
                         width: 380,
                         height: 70,
                         decoration: BoxDecoration(
-                          color: Color.fromARGB(77, 228, 227, 227), // Màu nền cho hình đầu tiên
+                          color: Color.fromARGB(
+                              77, 175, 112, 221), // Màu nền cho hình đầu tiên
                           borderRadius: BorderRadius.circular(15),
                           border: Border.all(
-                            color: Colors.black, // Viền đen
-                            width: 1.5,
+                            color: Theme.of(context).brightness ==
+                                    Brightness.dark
+                                ? Colors.white // Viền trắng khi ở chế độ tối
+                                : Colors.black, // Viền đen khi ở chế độ sáng
+                            width: 2, // Độ dày viền
                           ),
                           boxShadow: [
                             BoxShadow(
@@ -333,11 +404,19 @@ class _FriendsScreenState extends State<FriendsScreen> {
                         width: 385,
                         height: 70,
                         decoration: BoxDecoration(
-                          color: Color.fromARGB(255, 255, 255, 255), // Màu nền cho hình thứ hai
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Color.fromARGB(255, 77, 68,
+                                  89) // Màu nền tối khi ở chế độ tối
+                              : Color.fromARGB(255, 255, 255,
+                                  255), // Màu nền sáng khi ở chế độ sáng // Màu nền cho hình thứ hai
                           borderRadius: BorderRadius.circular(15),
                           border: Border.all(
-                            color: Colors.black, // Viền đen
-                            width: 1.5,
+                            color: Theme.of(context).brightness ==
+                                    Brightness.dark
+                                ? const Color.fromARGB(255, 255, 255,
+                                    255) // Viền trắng khi ở chế độ tối
+                                : Colors.black, // Viền đen khi ở chế độ sáng
+                            width: 2, // Độ dày viền
                           ),
                           boxShadow: [
                             BoxShadow(
@@ -363,7 +442,12 @@ class _FriendsScreenState extends State<FriendsScreen> {
                                 shape: BoxShape
                                     .circle, // Đảm bảo avatar là hình tròn
                                 border: Border.all(
-                                  color: Colors.black, // Viền đen cho avatar
+                                  color: Theme.of(context).brightness ==
+                                          Brightness.dark
+                                      ? const Color.fromARGB(255, 255, 255,
+                                          255) // Viền trắng khi ở chế độ tối
+                                      : Colors
+                                          .black, // Viền đen khi ở chế độ sáng
                                   width: 2, // Độ dày viền
                                 ),
                               ),
@@ -391,7 +475,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                           friendData['username'] ?? 'Unknown',
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: Colors.black87,
+                            //color: Colors.black87,
                           ),
                         ),
                         subtitle: Column(
@@ -404,7 +488,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                               Text(
                                 'No messages yet',
                                 style: const TextStyle(
-                                  color: Colors.black54,
+                                  //color: Colors.black54,
                                   fontSize: 13,
                                   height: 1.5,
                                 ),
