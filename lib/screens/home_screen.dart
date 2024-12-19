@@ -23,6 +23,7 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
     super.initState();
+    _fetchUsername();
   }
 
   Future<void> _fetchUsername() async {
@@ -57,7 +58,6 @@ class _MyHomePageState extends State<MyHomePage> {
         page = ChatBotScreen();
         break;
       case 3:
-        _fetchUsername();
         page = SettingsScreen(username: username, userId: widget.userId);
         break;
       default:
