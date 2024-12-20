@@ -298,4 +298,49 @@ router.post('/message', async (req, res) => {
   }
 });
 
+router.get('/latest-messages/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    // Find all groups the user is a member of
+    const userGroups = await Group.find({ members: userId });
+    const groupIds = userGroups.map(g => g._id);
+
+    // Get latest message for each group
+    const latestMessages = await GroupMessage.aggregate([
+      {
+        $match: { groupId: { $in: groupIds } }
+      },
+      {
+        $sort: { timestamp: -1 }
+      },
+      {
+        $group: {
+          _id: '$groupId',
+          message: { $first: '$message' },
+          timestamp: { $first: '$timestamp' },
+          type: { $first: '$type' },
+          isRecalled: { $first: '$isRecalled' }
+        }
+      }
+    ]);
+
+    // Decrypt messages if needed
+    const decryptedMessages = latestMessages.map(msg => ({
+      groupId: msg._id.toString(),
+      message: msg.isRecalled || msg.type !== 'text' ? 
+        msg.message : 
+        decrypt(msg.message),
+      timestamp: msg.timestamp,
+      type: msg.type,
+      isRecalled: msg.isRecalled
+    }));
+
+    res.json(decryptedMessages);
+  } catch (err) {
+    console.error('Error fetching latest group messages:', err);
+    res.status(500).json({ error: 'Failed to fetch latest group messages' });
+  }
+});
+
 module.exports = router;

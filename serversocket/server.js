@@ -602,6 +602,18 @@ io.on('connection', (socket) => {
         timestamp: groupMessage.timestamp
       });
 
+      // Add latest message update for groups
+      const latestMessageData = {
+        groupId,
+        message: message,
+        timestamp: new Date(),
+        type: 'text',
+        isRecalled: false
+      };
+
+      // Emit to all group members
+      io.to(groupId).emit('latestGroupMessage', latestMessageData);
+
       // Handle notifications
       if (group && group.members) {
         const members = await User.find({ _id: { $in: group.members, $ne: sender } });

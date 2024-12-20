@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import '../config/config.dart';
 import '../services/groups_service.dart';
 import 'creategroup_screen.dart';
 import 'groupchat_screen.dart';
@@ -14,11 +18,89 @@ class GroupsScreen extends StatefulWidget {
 
 class _GroupsScreenState extends State<GroupsScreen> {
   late GroupsService groupsService;
+  Map<String, Map<String, dynamic>> latestMessages = {};
 
   @override
   void initState() {
     super.initState();
     groupsService = GroupsService(widget.userId);
+    _loadLatestMessages();
+
+    // Refresh periodically
+    Timer.periodic(Duration(seconds: 30), (_) {
+      if (mounted) {
+        groupsService.refreshGroups();
+        _loadLatestMessages();
+      }
+    });
+  }
+
+  Future<void> _loadLatestMessages() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${Config.apiBaseUrl}/api/groups/latest-messages/${widget.userId}'),
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> messages = json.decode(response.body);
+        setState(() {
+          latestMessages.clear();
+          for (var message in messages) {
+            latestMessages[message['groupId']] = {
+              'message': message['message'] ?? '',
+              'type': message['type'] ?? 'text',
+              'isRecalled': message['isRecalled'] ?? false,
+              'timestamp': DateTime.parse(message['timestamp']),
+            };
+          }
+        });
+      }
+    } catch (e) {
+      print('Error loading latest group messages: $e');
+    }
+  }
+
+  Widget _buildLatestMessage(String groupId) {
+    final messageData = latestMessages[groupId];
+    if (messageData == null) return const SizedBox.shrink();
+
+    String messageText;
+    if (messageData['isRecalled'] == true) {
+      messageText = 'Message recalled';
+    } else {
+      switch (messageData['type']) {
+        case 'image':
+          messageText = '🖼️ Image';
+          break;
+        case 'file':
+          if (messageData['message'].startsWith('{')) {
+            try {
+              final fileData = json.decode(messageData['message']);
+              messageText = '📎 ${fileData['fileName']}';
+            } catch (e) {
+              messageText = '📎 File';
+            }
+          } else {
+            messageText = '📎 File';
+          }
+          break;
+        default:
+          messageText = messageData['message'] ?? '';
+          if (messageText.length > 30) {
+            messageText = messageText.substring(0, 27) + '...';
+          }
+      }
+    }
+
+    return Text(
+      messageText,
+      style: const TextStyle(
+        fontSize: 13,
+        height: 1.5,
+      ),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
   }
 
   @override
@@ -107,11 +189,29 @@ class _GroupsScreenState extends State<GroupsScreen> {
                       color: Color.fromARGB(255, 0, 0, 0),
                     ),
                   ),
-                  subtitle: Text(
-                    'Owner: ${group['owner']}',
-                    style: const TextStyle(
-                      color: Color.fromARGB(255, 51, 51, 51),
-                    ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (latestMessages.containsKey(group['id']))
+                        _buildLatestMessage(group['id'])
+                      else
+                        Text(
+                          'No messages yet',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            height: 1.5,
+                          ),
+                        ),
+                      SizedBox(height: 4),
+                      Text(
+                        '${group['members']?.length ?? 0} members',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
                   onTap: () {
                     Navigator.push(
