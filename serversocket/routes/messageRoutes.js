@@ -103,8 +103,7 @@ router.get('/statistics', async (req, res) => {
   try {
     console.log('Starting statistics calculation...');
     
-    // Verify models are properly loaded
-    if (!Message || !GroupMessage || !User) {
+    if (!Message || !GroupMessage) {
       throw new Error('Required models not properly initialized');
     }
 
@@ -116,96 +115,12 @@ router.get('/statistics', async (req, res) => {
     const totalGroupMessages = await GroupMessage.countDocuments() || 0;
     console.log('Group messages count:', totalGroupMessages);
 
-    // Get user statistics for direct messages
-    const userStats = await Message.aggregate([
-      {
-        $lookup: {
-          from: 'users',
-          let: { senderId: '$sender' },
-          pipeline: [
-            {
-              $match: {
-                $expr: { $eq: ['$_id', '$$senderId'] }
-              }
-            }
-          ],
-          as: 'userInfo'
-        }
-      },
-      {
-        $match: {
-          'userInfo': { $ne: [] }
-        }
-      },
-      {
-        $group: {
-          _id: '$sender',
-          messageCount: { $sum: 1 },
-          username: { $first: { $arrayElemAt: ['$userInfo.username', 0] } }
-        }
-      },
-      {
-        $project: {
-          _id: 0,
-          username: 1,
-          messageCount: 1
-        }
-      },
-      {
-        $sort: { messageCount: -1 }
-      }
-    ]);
-    console.log('User stats calculated:', userStats.length);
-
-    // Get group message statistics
-    const groupStats = await GroupMessage.aggregate([
-      {
-        $lookup: {
-          from: 'users',
-          let: { senderId: '$sender' },
-          pipeline: [
-            {
-              $match: {
-                $expr: { $eq: ['$_id', '$$senderId'] }
-              }
-            }
-          ],
-          as: 'userInfo'
-        }
-      },
-      {
-        $match: {
-          'userInfo': { $ne: [] }
-        }
-      },
-      {
-        $group: {
-          _id: '$sender',
-          messageCount: { $sum: 1 },
-          username: { $first: { $arrayElemAt: ['$userInfo.username', 0] } }
-        }
-      },
-      {
-        $project: {
-          _id: 0,
-          username: 1,
-          messageCount: 1
-        }
-      },
-      {
-        $sort: { messageCount: -1 }
-      }
-    ]);
-    console.log('Group stats calculated:', groupStats.length);
-
     const response = {
       totalStats: {
         directMessages: totalDirectMessages,
         groupMessages: totalGroupMessages,
         totalMessages: totalDirectMessages + totalGroupMessages
-      },
-      userStats: userStats || [],
-      groupStats: groupStats || []
+      }
     };
 
     console.log('Sending response:', JSON.stringify(response, null, 2));
@@ -213,11 +128,9 @@ router.get('/statistics', async (req, res) => {
 
   } catch (err) {
     console.error('Error in statistics route:', err);
-    console.error('Stack trace:', err.stack);
     res.status(500).json({ 
       error: 'Failed to get message statistics',
-      details: err.message,
-      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+      details: err.message
     });
   }
 });

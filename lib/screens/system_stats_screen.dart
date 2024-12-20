@@ -1,5 +1,5 @@
 import 'dart:async';
-
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -52,7 +52,9 @@ class _SystemStatsScreenState extends State<SystemStatsScreen> {
         }
       } else {
         final errorData = json.decode(response.body);
-        throw Exception(errorData['details'] ?? errorData['error'] ?? 'Unknown error occurred');
+        throw Exception(errorData['details'] ??
+            errorData['error'] ??
+            'Unknown error occurred');
       }
     } catch (e) {
       print('Error loading statistics: $e');
@@ -100,20 +102,90 @@ class _SystemStatsScreenState extends State<SystemStatsScreen> {
                     children: [
                       _buildTotalStats(),
                       SizedBox(height: 24),
-                      Text(
-                        'Direct Messages by User',
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      _buildUserStatsList(statistics!['userStats']),
-                      SizedBox(height: 24),
-                      Text(
-                        'Group Messages by User',
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      _buildUserStatsList(statistics!['groupStats']),
+                      _buildMessagesPieChart(),
                     ],
                   ),
                 ),
+    );
+  }
+
+  Widget _buildMessagesPieChart() {
+    final totalStats = statistics!['totalStats'];
+    final directMessages = totalStats['directMessages'].toDouble();
+    final groupMessages = totalStats['groupMessages'].toDouble();
+    final total = directMessages + groupMessages;
+
+    return Card(
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Text(
+              'Message Distribution',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            SizedBox(height: 16),
+            SizedBox(
+              height: 200,
+              child: PieChart(
+                PieChartData(
+                  sectionsSpace: 0,
+                  centerSpaceRadius: 40,
+                  sections: [
+                    PieChartSectionData(
+                      value: directMessages,
+                      title:
+                          '${(directMessages / total * 100).toStringAsFixed(1)}%',
+                      color: Colors.blue,
+                      radius: 100,
+                      titleStyle: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    PieChartSectionData(
+                      value: groupMessages,
+                      title:
+                          '${(groupMessages / total * 100).toStringAsFixed(1)}%',
+                      color: Colors.green,
+                      radius: 100,
+                      titleStyle: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _buildLegendItem('Direct Messages', Colors.blue),
+                SizedBox(width: 16),
+                _buildLegendItem('Group Messages', Colors.green),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLegendItem(String label, Color color) {
+    return Row(
+      children: [
+        Container(
+          width: 16,
+          height: 16,
+          color: color,
+        ),
+        SizedBox(width: 8),
+        Text(label),
+      ],
     );
   }
 
@@ -152,38 +224,6 @@ class _SystemStatsScreenState extends State<SystemStatsScreen> {
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildUserStatsList(List<dynamic> stats) {
-    if (stats.isEmpty) {
-      return Card(
-        child: Padding(
-          padding: EdgeInsets.all(16),
-          child: Center(
-            child: Text('No statistics available'),
-          ),
-        ),
-      );
-    }
-
-    return Card(
-      child: ListView.separated(
-        shrinkWrap: true,
-        physics: NeverScrollableScrollPhysics(),
-        itemCount: stats.length,
-        separatorBuilder: (context, index) => Divider(),
-        itemBuilder: (context, index) {
-          final stat = stats[index];
-          return ListTile(
-            title: Text(stat['username'] ?? 'Unknown User'),
-            trailing: Text(
-              (stat['messageCount'] ?? 0).toString(),
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          );
-        },
       ),
     );
   }
