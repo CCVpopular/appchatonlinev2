@@ -202,11 +202,31 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
       
       if (image != null) {
         File imageFile = File(image.path);
+                                                                                                                                                                                          final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
+        setState(() {
+          _currentMessages.add({
+            'id': tempId,
+            'sender': '',
+            'message': 'Uploading image...',
+            'timestamp': DateTime.now().toIso8601String(),
+            'senderId': widget.userId,
+            'type': 'loading',
+            'isTemporary': true,
+            'isRecalled': false,
+          });
+        });
+        
+        // Add message listener to remove temp message
+        groupChatService.socket.once('receiveGroupMessage', (data) {
+          setState(() {
+            _currentMessages.removeWhere((msg) => msg['id'] == tempId);
+          });
+        });
+        
         await groupChatService.sendImage(
           widget.userId, 
           imageFile,
           onProgress: (progress) {
-            // Progress is handled by temporary message
             print('Upload progress: ${(progress * 100).toStringAsFixed(1)}%');
           },
         );
@@ -229,13 +249,33 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
             ? 'application/${result.files.single.extension}'
             : 'application/octet-stream';
         
+        final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
+        setState(() {
+          _currentMessages.add({
+            'id': tempId,
+            'sender': '',
+            'message': 'Uploading $fileName...',
+            'timestamp': DateTime.now().toIso8601String(),
+            'senderId': widget.userId,
+            'type': 'loading',
+            'isTemporary': true,
+            'isRecalled': false,
+          });
+        });
+
+        // Add message listener to remove temp message
+        groupChatService.socket.once('receiveGroupMessage', (data) {
+          setState(() {
+            _currentMessages.removeWhere((msg) => msg['id'] == tempId);
+          });
+        });
+        
         await groupChatService.sendFile(
           widget.userId,
           file,
           fileName,
           mimeType,
           onProgress: (progress) {
-            // Progress is handled by temporary message
             print('Upload progress: ${(progress * 100).toStringAsFixed(1)}%');
           },
         );
