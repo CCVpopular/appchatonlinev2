@@ -1,6 +1,8 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const Message = require('../models/Message');
+const User = require('../models/User'); // Add this import
+const GroupMessage = require('../models/GroupMessage');
 const router = express.Router();
 
 // Update the messages route to support pagination
@@ -93,6 +95,43 @@ router.get('/latest-messages/:userId', async (req, res) => {
   } catch (err) {
     console.error('Failed to fetch latest messages:', err);
     res.status(500).send({ error: 'Failed to fetch latest messages' });
+  }
+});
+
+// Add this new route for message statistics
+router.get('/statistics', async (req, res) => {
+  try {
+    console.log('Starting statistics calculation...');
+    
+    if (!Message || !GroupMessage) {
+      throw new Error('Required models not properly initialized');
+    }
+
+    // Get total direct messages
+    const totalDirectMessages = await Message.countDocuments() || 0;
+    console.log('Direct messages count:', totalDirectMessages);
+
+    // Get total group messages
+    const totalGroupMessages = await GroupMessage.countDocuments() || 0;
+    console.log('Group messages count:', totalGroupMessages);
+
+    const response = {
+      totalStats: {
+        directMessages: totalDirectMessages,
+        groupMessages: totalGroupMessages,
+        totalMessages: totalDirectMessages + totalGroupMessages
+      }
+    };
+
+    console.log('Sending response:', JSON.stringify(response, null, 2));
+    res.json(response);
+
+  } catch (err) {
+    console.error('Error in statistics route:', err);
+    res.status(500).json({ 
+      error: 'Failed to get message statistics',
+      details: err.message
+    });
   }
 });
 
