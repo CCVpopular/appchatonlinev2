@@ -129,22 +129,36 @@ class _FriendsScreenState extends State<FriendsScreen> {
     if (messageData['isRecalled'] == true) {
       messageText = 'Message recalled';
     } else {
+      // Message is already decrypted from the server
       switch (messageData['type']) {
         case 'image':
           messageText = '🖼️ Image';
           break;
         case 'file':
-          messageText = '📎 File';
+          // Extract filename from JSON string if it's a file
+          if (messageData['message'].startsWith('{')) {
+            try {
+              final fileData = json.decode(messageData['message']);
+              messageText = '📎 ${fileData['fileName']}';
+            } catch (e) {
+              messageText = '📎 File';
+            }
+          } else {
+            messageText = '📎 File';
+          }
           break;
         default:
           messageText = messageData['message'] ?? '';
+          // Truncate long messages
+          if (messageText.length > 30) {
+            messageText = messageText.substring(0, 27) + '...';
+          }
       }
     }
 
     return Text(
       messageText,
       style: const TextStyle(
-        //color: Colors.black54,
         fontSize: 13,
         height: 1.5,
       ),

@@ -67,8 +67,14 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
 
   void _setupScrollController() {
     _scrollController.addListener(() {
-      if (_scrollController.position.pixels == 0 && !_isLoadingMore && _hasMoreMessages) {
-        _loadMoreMessages();
+      if (!_isLoadingMore && _hasMoreMessages) {
+        final maxScroll = _scrollController.position.maxScrollExtent;
+        final currentScroll = _scrollController.position.pixels;
+        final triggerPoint = maxScroll * 0.3; // 70% from top
+        
+        if (currentScroll <= triggerPoint) {
+          _loadMoreMessages();
+        }
       }
     });
   }
@@ -78,27 +84,36 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
 
     setState(() {
       _isLoadingMore = true;
-      _shouldAutoScroll = false;  // Disable auto-scroll when loading more
+      _shouldAutoScroll = false;
     });
 
     try {
       final result = await groupChatService.loadMoreMessages(_currentPage + 1, _messagesPerPage);
       
-      setState(() {
-        _hasMoreMessages = _currentPage < result.totalPages;
-        if (_hasMoreMessages) {
-          _currentPage++;
-        }
-      });
+      if (mounted) {
+        setState(() {
+          final oldPosition = _scrollController.position.pixels;
+          _currentMessages.insertAll(0, List<Map<String, dynamic>>.from(result.messages));
+          _hasMoreMessages = _currentPage < result.totalPages;
+          if (_hasMoreMessages) {
+            _currentPage++;
+          }
+          _isLoadingMore = false;
+
+          // Restore scroll position
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (_scrollController.hasClients) {
+              _scrollController.jumpTo(oldPosition + 
+                (_scrollController.position.maxScrollExtent - oldPosition));
+            }
+          });
+        });
+      }
     } catch (e) {
       print('Error loading more messages: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error loading messages')),
       );
-    } finally {
-      setState(() {
-        _isLoadingMore = false;
-      });
     }
   }
 
@@ -203,11 +218,31 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
       
       if (image != null) {
         File imageFile = File(image.path);
+                                                                                                                                                                                          final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
+        setState(() {
+          _currentMessages.add({
+            'id': tempId,
+            'sender': '',
+            'message': 'Uploading image...',
+            'timestamp': DateTime.now().toIso8601String(),
+            'senderId': widget.userId,
+            'type': 'loading',
+            'isTemporary': true,
+            'isRecalled': false,
+          });
+        });
+        
+        // Add message listener to remove temp message
+        groupChatService.socket.once('receiveGroupMessage', (data) {
+          setState(() {
+            _currentMessages.removeWhere((msg) => msg['id'] == tempId);
+          });
+        });
+        
         await groupChatService.sendImage(
           widget.userId, 
           imageFile,
           onProgress: (progress) {
-            // Progress is handled by temporary message
             print('Upload progress: ${(progress * 100).toStringAsFixed(1)}%');
           },
         );
@@ -230,13 +265,33 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
             ? 'application/${result.files.single.extension}'
             : 'application/octet-stream';
         
+        final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
+        setState(() {
+          _currentMessages.add({
+            'id': tempId,
+            'sender': '',
+            'message': 'Uploading $fileName...',
+            'timestamp': DateTime.now().toIso8601String(),
+            'senderId': widget.userId,
+            'type': 'loading',
+            'isTemporary': true,
+            'isRecalled': false,
+          });
+        });
+
+        // Add message listener to remove temp message
+        groupChatService.socket.once('receiveGroupMessage', (data) {
+          setState(() {
+            _currentMessages.removeWhere((msg) => msg['id'] == tempId);
+          });
+        });
+        
         await groupChatService.sendFile(
           widget.userId,
           file,
           fileName,
           mimeType,
           onProgress: (progress) {
-            // Progress is handled by temporary message
             print('Upload progress: ${(progress * 100).toStringAsFixed(1)}%');
           },
         );
@@ -761,13 +816,18 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                 
                 return ListView.builder(
                   controller: _scrollController, 
-                  itemCount: messages.length + (_hasMoreMessages ? 1 : 0),
+                  itemCount: messages.length + 1,
                   itemBuilder: (context, index) {
-                    if (index == 0 && _hasMoreMessages) {
-                      return _buildLoadingIndicator();
+                    if (index == 0) {
+                      return Visibility(
+                        visible: _isLoadingMore,
+                        child: Container(
+                          padding: EdgeInsets.all(8.0),
+                          child: Center(child: CircularProgressIndicator()),
+                        ),
+                      );
                     }
-                    
-                    final messageIndex = _hasMoreMessages ? index - 1 : index;
+                    final messageIndex = index - 1;
                     if (messageIndex >= messages.length) return null;
                     
                     final message = messages[messageIndex];
