@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import 'system_stats_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
   final String userId;
@@ -47,7 +48,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
           _buildDashboardCard(
             'System Stats',
             Icons.analytics,
-            () => Navigator.pushNamed(context, '/system-stats'),
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => SystemStatsScreen()),
+            ),
           ),
         ],
       ),

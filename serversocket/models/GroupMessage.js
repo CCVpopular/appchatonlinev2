@@ -6,7 +6,7 @@ const GroupMessageSchema = new Schema({
   sender: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   senderName: { type: String },
   message: { type: String, required: true },
-  type: { type: String, enum: ['text', 'image', 'file'], default: 'text' },
+  type: { type: String, enum: ['text', 'image', 'file', 'system'], default: 'text' },
   timestamp: { type: Date, default: Date.now },
   isRecalled: { type: Boolean, default: false },
 });
