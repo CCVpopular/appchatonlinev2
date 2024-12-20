@@ -50,6 +50,17 @@ class _ChatScreenState extends State<ChatScreen> {
     chatService = ChatService(widget.userId, widget.friendId);
     messages.clear();
     _loadMessages();
+    
+    // Add recall stream listener
+    chatService.recallStream.listen((messageId) {
+      setState(() {
+        final index = messages.indexWhere((msg) => msg['id'] == messageId); 
+        if (index != -1) {
+          messages[index]['isRecalled'] = 'true';
+        }
+      });
+    });
+
     _updateMessageStream();
     NotificationService().init(widget.userId, context: context);
     _loadUserAvatars();
