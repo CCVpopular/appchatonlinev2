@@ -193,4 +193,16 @@ class AuthService {
     print('All status update attempts failed');
     return false;
   }
+
+  // Add this method to handle app lifecycle changes
+  Future<void> handleAppLifecycleState(String state) async {
+    await _initPrefs();
+    final userId = _prefs?.getString('userId');
+    if (userId != null && userId.isNotEmpty) {
+      final status = state == 'inactive' || state == 'paused' || state == 'detached' 
+          ? 'offline' 
+          : 'online';
+      await updateUserStatus(userId, status);
+    }
+  }
 }
