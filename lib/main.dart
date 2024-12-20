@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'services/startup_service.dart';
 import 'screens/loading_screen.dart';
 import 'package:awesome_notifications/awesome_notifications.dart';
+import 'package:appchatonline/services/auth_service.dart';
 
 Future<void> initNotifications() async {
   await AwesomeNotifications().initialize(
@@ -62,8 +63,33 @@ void main() async {
   );
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({Key? key}) : super(key: key);
+
+  @override
+  _MyAppState createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  final AuthService _authService = AuthService();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    _authService.handleAppLifecycleState(state.name);
+  }
 
   @override
   Widget build(BuildContext context) {

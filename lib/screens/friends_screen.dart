@@ -22,9 +22,25 @@ class _FriendsScreenState extends State<FriendsScreen> {
   Map<String, Map<String, dynamic>> latestMessages = {};
   final String baseUrl = Config.apiBaseUrl;
 
+  Future<void> _updateUserStatus(String status) async {
+    try {
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/users/status/${widget.userId}'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'status': status}),
+      );
+      if (response.statusCode != 200) {
+        print('Failed to update status: ${response.body}');
+      }
+    } catch (e) {
+      print('Error updating status: $e');
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+    _updateUserStatus('online'); // Set status to online when screen opens
     friendService = FriendService();
     friendService.getFriends(widget.userId);
     _loadLatestMessages();
@@ -36,6 +52,12 @@ class _FriendsScreenState extends State<FriendsScreen> {
         _loadLatestMessages();
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _updateUserStatus('offline'); // Set status to offline when leaving screen
+    super.dispose();
   }
 
   Future<void> _loadLatestMessages() async {
