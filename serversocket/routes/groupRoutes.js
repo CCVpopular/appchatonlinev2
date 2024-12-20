@@ -5,8 +5,10 @@ const multer = require('multer');
 const upload = multer({ dest: 'temp/' });
 const User = require('../models/User');
 const router = express.Router();
+const fs = require('fs');
 
 const { RtcTokenBuilder, RtcRole } = require('agora-access-token');
+const { encrypt, decrypt } = require('../utils/encryption');
 
 // Tạo nhóm
 router.post('/create', async (req, res) => {
@@ -130,10 +132,18 @@ router.get('/group-messages/:groupId', async (req, res) => {
       .limit(parseInt(limit))
       .select('message sender timestamp isRecalled type');
 
+    // Decrypt messages
+    const decryptedMessages = messages.map(msg => ({
+      ...msg._doc,
+      message: msg.isRecalled || msg.type !== 'text' ? 
+        msg.message : 
+        decrypt(msg.message)
+    }));
+
     const totalMessages = await GroupMessage.countDocuments({ groupId });
 
     res.send({
-      messages: messages.reverse(), // Reverse back to ascending order
+      messages: decryptedMessages.reverse(), // Reverse back to ascending order
       totalMessages,
       currentPage: parseInt(page),
       totalPages: Math.ceil(totalMessages / limit)
@@ -264,6 +274,27 @@ router.post('/call-ended', async (req, res) => {
   } catch (error) {
     console.error('Error handling call end:', error);
     res.status(500).json({ error: 'Failed to handle call end' });
+  }
+});
+
+// Update the message handler to encrypt messages
+router.post('/message', async (req, res) => {
+  try {
+    const { groupId, sender, message } = req.body;
+    
+    // Encrypt message before saving
+    const encryptedMessage = encrypt(message);
+    const groupMessage = new GroupMessage({
+      groupId,
+      sender,
+      message: encryptedMessage
+    });
+
+    await groupMessage.save();
+    res.status(201).json(groupMessage);
+  } catch (err) {
+    console.error('Error sending group message:', err);
+    res.status(500).send({ error: 'Failed to send message' });
   }
 });
 
