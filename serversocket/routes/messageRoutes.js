@@ -1,6 +1,9 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const Message = require('../models/Message');
+const { decrypt } = require('../utils/encryption');
+const User = require('../models/User'); // Add this import
+const GroupMessage = require('../models/GroupMessage');
 const router = express.Router();
 
 // Update the messages route to support pagination
@@ -33,14 +36,50 @@ router.get('/messages/:sender/:receiver', async (req, res) => {
       ],
     });
 
+    // Decrypt messages before sending
+    const decryptedMessages = messages.map(msg => ({
+      ...msg._doc,
+      message: msg.isRecalled ? msg.message : decrypt(msg.message)
+    }));
+
     res.status(200).send({
-      messages: messages.reverse(), // Reverse to show oldest first
+      messages: decryptedMessages.reverse(), // Reverse to show oldest first
       total,
       hasMore: skip + messages.length < total
     });
   } catch (err) {
     console.error('Failed to fetch messages:', err);
     res.status(500).send({ error: 'Failed to fetch messages' });
+  }
+});
+
+router.get('/group-messages/:groupId', async (req, res) => {
+  const { groupId } = req.params;
+  const { page = 1, limit = 20 } = req.query;
+
+  try {
+    const messages = await GroupMessage.find({ groupId })
+      .populate('sender', 'username')
+      .sort({ timestamp: -1 })
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit))
+      .select('message sender timestamp isRecalled type');
+
+    // Decrypt group messages
+    const decryptedMessages = messages.map(msg => ({
+      ...msg._doc,
+      message: msg.isRecalled ? msg.message : decrypt(msg.message)
+    }));
+
+    res.send({
+      messages: decryptedMessages.reverse(),
+      totalMessages: await GroupMessage.countDocuments({ groupId }),
+      currentPage: parseInt(page),
+      totalPages: Math.ceil(totalMessages / limit)
+    });
+  } catch (err) {
+    console.error('Error fetching group messages:', err);
+    res.status(500).send({ error: 'Failed to fetch group messages' });
   }
 });
 
@@ -88,11 +127,54 @@ router.get('/latest-messages/:userId', async (req, res) => {
       }
     ]);
 
-    console.log('Latest messages:', latestMessages);
-    res.status(200).send(latestMessages);
+    // Decrypt messages before sending
+    const decryptedMessages = latestMessages.map(msg => ({
+      ...msg,
+      message: msg.isRecalled ? msg.message : decrypt(msg.message)
+    }));
+
+    console.log('Latest messages:', decryptedMessages);
+    res.status(200).send(decryptedMessages);
   } catch (err) {
     console.error('Failed to fetch latest messages:', err);
     res.status(500).send({ error: 'Failed to fetch latest messages' });
+  }
+});
+
+// Add this new route for message statistics
+router.get('/statistics', async (req, res) => {
+  try {
+    console.log('Starting statistics calculation...');
+    
+    if (!Message || !GroupMessage) {
+      throw new Error('Required models not properly initialized');
+    }
+
+    // Get total direct messages
+    const totalDirectMessages = await Message.countDocuments() || 0;
+    console.log('Direct messages count:', totalDirectMessages);
+
+    // Get total group messages
+    const totalGroupMessages = await GroupMessage.countDocuments() || 0;
+    console.log('Group messages count:', totalGroupMessages);
+
+    const response = {
+      totalStats: {
+        directMessages: totalDirectMessages,
+        groupMessages: totalGroupMessages,
+        totalMessages: totalDirectMessages + totalGroupMessages
+      }
+    };
+
+    console.log('Sending response:', JSON.stringify(response, null, 2));
+    res.json(response);
+
+  } catch (err) {
+    console.error('Error in statistics route:', err);
+    res.status(500).json({ 
+      error: 'Failed to get message statistics',
+      details: err.message
+    });
   }
 });
 

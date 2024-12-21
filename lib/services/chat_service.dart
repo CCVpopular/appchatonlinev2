@@ -11,6 +11,7 @@ class ChatService {
   late IO.Socket socket;
   final _messageStreamController = StreamController<Map<String, String>>.broadcast();
   final _recallStreamController = StreamController<String>.broadcast();
+  final _latestMessageStreamController = StreamController<Map<String, dynamic>>.broadcast();
   final String userId;
   final String friendId;
 
@@ -19,6 +20,7 @@ class ChatService {
   ChatService(this.userId, this.friendId) {
     socket = SocketManager(Config.apiBaseUrl).getSocket();
     _connectSocket();
+    _listenForLatestMessages();
   }
 
   void _connectSocket() {
@@ -45,6 +47,12 @@ class ChatService {
     socket.emit('leaveRoom', {'userId': userId, 'friendId': friendId});
     // Join new room
     socket.emit('joinRoom', {'userId': userId, 'friendId': friendId});
+  }
+
+  void _listenForLatestMessages() {
+    socket.on('latestMessage', (data) {
+      _latestMessageStreamController.add(data);
+    });
   }
 
   void sendMessage(String message) {
@@ -89,16 +97,31 @@ class ChatService {
 
   Future<void> sendFile(File file, String fileName, String mimeType, {Function(double)? onProgress}) async {
     try {
-      _emitTemporaryMessage(fileName, 'file');
+      if (!file.existsSync()) {
+        throw Exception('File does not exist');
+      }
+
       final bytes = await file.readAsBytes();
+      if (bytes.length > 500 * 1024 * 1024) { // 500MB limit
+        throw Exception('File size exceeds 500MB limit');
+      }
+
+      _emitTemporaryMessage(fileName, 'file');
       final base64File = base64Encode(bytes);
 
-      socket.emit('sendFile', {
+      socket.emitWithAck('sendFile', {
         'sender': userId,
         'receiver': friendId,
         'fileData': base64File,
         'fileName': fileName,
         'fileType': mimeType,
+      }, ack: (data) {
+        // Handle acknowledgment here
+      });
+
+      // Add a longer timeout for larger files
+      Future.delayed(const Duration(minutes: 10), () {
+        throw Exception('Upload timeout');
       });
     } catch (e) {
       print('Error sending file: $e');
@@ -116,6 +139,7 @@ class ChatService {
 
   Stream<Map<String, String>> get oldMessageStream => _messageStreamController.stream;
   Stream<String> get recallStream => _recallStreamController.stream;
+  Stream<Map<String, dynamic>> get latestMessageStream => _latestMessageStreamController.stream;
 
   void dispose() {
     socket.emit('leaveRoom', {'userId': userId, 'friendId': friendId});
@@ -123,6 +147,7 @@ class ChatService {
     socket.off('messageRecalled');
     _messageStreamController.close();
     _recallStreamController.close();
+    _latestMessageStreamController.close();
   }
 
   // Hàm lấy tin nhắn cũ

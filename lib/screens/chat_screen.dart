@@ -11,6 +11,8 @@ import '../config/config.dart';
 import '../services/chat_service.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
+import 'package:path/path.dart' as path;
+import '../services/download_service.dart';
 
 class ChatScreen extends StatefulWidget {
   final String userId;
@@ -31,6 +33,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final ImagePicker _picker = ImagePicker();
   String? friendAvatar;
   String? myAvatar;
+  String? friendName;
   final ScrollController _scrollController = ScrollController();
   int _currentPage = 1;
   static const int _pageSize = 20;
@@ -40,34 +43,41 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
-    messages.clear(); // Clear messages when initializing
+    _initializeChatService();
+  }
+
+  void _initializeChatService() {
     chatService = ChatService(widget.userId, widget.friendId);
-
-    _scrollController.addListener(_onScroll);
-    // Load old messages
+    messages.clear();
     _loadMessages();
-
-    // Listen for new messages
-    _updateMessageStream();
-
-    // Listen for message recalls
+    _scrollController.addListener(_onScroll); // Add scroll listener
+    
+    // Add recall stream listener
     chatService.recallStream.listen((messageId) {
       setState(() {
-        final index = messages.indexWhere((msg) => msg['id'] == messageId);
+        final index = messages.indexWhere((msg) => msg['id'] == messageId); 
         if (index != -1) {
-          messages[index] = {...messages[index], 'isRecalled': 'true'};
+          messages[index]['isRecalled'] = 'true';
         }
       });
     });
 
-    // Initialize notification service with context
+    _updateMessageStream();
     NotificationService().init(widget.userId, context: context);
     _loadUserAvatars();
+    DownloadService.initialize();
   }
 
   void _onScroll() {
-    if (_scrollController.position.pixels == 0 && !_isLoadingMore && _hasMore) {
-      _loadMoreMessages();
+    // Load more when scrolled 70% up
+    if (!_isLoadingMore && _hasMore) {
+      final maxScroll = _scrollController.position.maxScrollExtent;
+      final currentScroll = _scrollController.position.pixels;
+      final triggerPoint = maxScroll * 0.3; // 70% from top (30% from bottom)
+      
+      if (currentScroll <= triggerPoint) {
+        _loadMoreMessages();
+      }
     }
   }
 
@@ -85,6 +95,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
       if (mounted) {
         setState(() {
+          friendName = jsonDecode(friendProfile.body)['username'];
           friendAvatar = jsonDecode(friendProfile.body)['avatar'];
           myAvatar = jsonDecode(myProfile.body)['avatar'];
         });
@@ -135,12 +146,24 @@ class _ChatScreenState extends State<ChatScreen> {
         limit: _pageSize,
       );
 
-      setState(() {
-        _currentPage++;
-        messages.insertAll(0, List<Map<String, String>>.from(result['messages']));
-        _hasMore = result['hasMore'];
-        _isLoadingMore = false;
-      });
+      if (mounted) {
+        setState(() {
+          _currentPage++;
+          // Maintain scroll position when adding messages
+          final oldPosition = _scrollController.position.pixels;
+          messages.insertAll(0, List<Map<String, String>>.from(result['messages']));
+          _hasMore = result['hasMore'];
+          _isLoadingMore = false;
+          
+          // Restore scroll position after layout
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (_scrollController.hasClients) {
+              _scrollController.jumpTo(oldPosition + 
+                (_scrollController.position.maxScrollExtent - oldPosition));
+            }
+          });
+        });
+      }
     } catch (e) {
       setState(() {
         _isLoadingMore = false;
@@ -178,16 +201,27 @@ class _ChatScreenState extends State<ChatScreen> {
             ? 'application/${result.files.single.extension}'
             : 'application/octet-stream';
         
+        // Check file size
+        int fileSize = await file.length();
+        if (fileSize > 500 * 1024 * 1024) { // 500MB limit
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('File size must be less than 500MB')),
+          );
+          return;
+        }
+        
         await chatService.sendFile(
           file, 
           fileName, 
           mimeType,
           onProgress: (progress) {
-            // Progress is now handled by the upload progress card
+            // Progress is handled by the upload progress card
           }
         );
       }
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error sending file: $e')),
       );
@@ -340,6 +374,51 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  Future<void> _downloadImage(String imageUrl) async {
+    try {
+      final fileName = 'IMG_${DateTime.now().millisecondsSinceEpoch}${path.extension(imageUrl)}';
+      final taskId = await DownloadService.downloadFile(
+        url: imageUrl,
+        fileName: fileName,
+        isImage: true,
+      );
+
+      if (taskId != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Image download started')),
+        );
+      } else {
+        throw Exception('Download failed to start');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to download image: $e')),
+      );
+    }
+  }
+
+  Future<void> _downloadFile(String fileUrl, String fileName) async {
+    try {
+      final taskId = await DownloadService.downloadFile(
+        url: fileUrl,
+        fileName: fileName,
+        isImage: false,
+      );
+
+      if (taskId != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('File download started')),
+        );
+      } else {
+        throw Exception('Download failed to start');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to download file: $e')),
+      );
+    }
+  }
+
   Widget _buildMessageContent(Map<String, String> message) {
     final isTemporary = message['isTemporary'] == 'true';
     
@@ -413,32 +492,35 @@ class _ChatScreenState extends State<ChatScreen> {
         child: Stack(
           alignment: Alignment.center,
           children: [
-            CachedNetworkImage(
-              imageUrl: message['message'] ?? '',
-              fit: BoxFit.contain,
-              placeholder: (context, url) => Center(
-                child: Column(
+            GestureDetector(
+              onTap: () => _downloadImage(message['message'] ?? ''),
+              child: CachedNetworkImage(
+                imageUrl: message['message'] ?? '',
+                fit: BoxFit.contain,
+                placeholder: (context, url) => Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const CircularProgressIndicator(),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Loading...',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                ),
+                errorWidget: (context, url, error) => Column(
                   mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const CircularProgressIndicator(),
-                    const SizedBox(height: 8),
+                  children: const [
+                    Icon(Icons.error, color: Colors.red, size: 32),
+                    SizedBox(height: 4),
                     Text(
-                      'Loading...',
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      'Failed to load image',
+                      style: TextStyle(color: Colors.red, fontSize: 12),
                     ),
                   ],
                 ),
-              ),
-              errorWidget: (context, url, error) => Column(
-                mainAxisSize: MainAxisSize.min,
-                children: const [
-                  Icon(Icons.error, color: Colors.red, size: 32),
-                  SizedBox(height: 4),
-                  Text(
-                    'Failed to load image',
-                    style: TextStyle(color: Colors.red, fontSize: 12),
-                  ),
-                ],
               ),
             ),
             // Add timestamp overlay
@@ -487,9 +569,17 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
               ],
             ),
-            TextButton(
-              onPressed: () => launch(fileInfo['viewLink']),
-              child: Text('Open File'),
+            Row(
+              children: [
+                TextButton(
+                  onPressed: () => launch(fileInfo['viewLink']),
+                  child: Text('Open File'),
+                ),
+                TextButton(
+                  onPressed: () => _downloadFile(fileInfo['viewLink'], fileInfo['fileName']),
+                  child: Text('Download'),
+                ),
+              ],
             ),
             Text(
               timeStr,
@@ -561,7 +651,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Chat'),
+        title: Text(friendName ?? ''),
         actions: [
           IconButton(
             icon: const Icon(Icons.video_call),
@@ -591,29 +681,27 @@ class _ChatScreenState extends State<ChatScreen> {
                 : ListView.builder(
                     controller: _scrollController,
                     reverse: false,
-                    itemCount: messages.length + (_hasMore ? 1 : 0),
+                    itemCount: messages.length + 1, // Always add 1 for loading indicator
                     itemBuilder: (context, index) {
-                      if (index == 0 && _hasMore) {
-                        return Padding(
-                          padding: EdgeInsets.all(8.0),
-                          child: Center(
-                            child: _isLoadingMore
-                                ? CircularProgressIndicator()
-                                : Text('Pull to load more'),
+                      if (index == 0) {
+                        return Visibility(
+                          visible: _isLoadingMore,
+                          child: Container(
+                            padding: EdgeInsets.all(8.0),
+                            child: Center(child: CircularProgressIndicator()),
                           ),
                         );
                       }
-                      final actualIndex = _hasMore ? index - 1 : index;
-                      final message = messages[actualIndex];
+                      // Adjust index for actual messages
+                      final message = messages[index - 1];
                       final isCurrentUser = message['sender'] == widget.userId;
                       final isRecalled = message['isRecalled'] == 'true';
 
                       return GestureDetector(
-                        onLongPress: isCurrentUser &&
-                                !isRecalled &&
-                                message['id'] != null
+                        onLongPress: isCurrentUser && !isRecalled && message['id'] != null 
                             ? () => _showRecallDialog(message['id']!)
                             : null,
+                        behavior: HitTestBehavior.translucent,
                         child: Row(
                           mainAxisAlignment: isCurrentUser
                               ? MainAxisAlignment.end
@@ -665,6 +753,8 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                     child: TextField(
                       controller: _controller,
+                      maxLength: 1000, // Add character limit
+                      buildCounter: (context, {required currentLength, required isFocused, maxLength}) => Container(), // Hide counter
                       decoration: const InputDecoration(
                         hintText: 'Enter a message',
                         border: InputBorder

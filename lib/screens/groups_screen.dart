@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import '../config/config.dart';
 import '../services/groups_service.dart';
 import 'creategroup_screen.dart';
 import 'groupchat_screen.dart';
@@ -14,11 +18,89 @@ class GroupsScreen extends StatefulWidget {
 
 class _GroupsScreenState extends State<GroupsScreen> {
   late GroupsService groupsService;
+  Map<String, Map<String, dynamic>> latestMessages = {};
 
   @override
   void initState() {
     super.initState();
     groupsService = GroupsService(widget.userId);
+    _loadLatestMessages();
+
+    // Refresh periodically
+    Timer.periodic(Duration(seconds: 30), (_) {
+      if (mounted) {
+        groupsService.refreshGroups();
+        _loadLatestMessages();
+      }
+    });
+  }
+
+  Future<void> _loadLatestMessages() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${Config.apiBaseUrl}/api/groups/latest-messages/${widget.userId}'),
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> messages = json.decode(response.body);
+        setState(() {
+          latestMessages.clear();
+          for (var message in messages) {
+            latestMessages[message['groupId']] = {
+              'message': message['message'] ?? '',
+              'type': message['type'] ?? 'text',
+              'isRecalled': message['isRecalled'] ?? false,
+              'timestamp': DateTime.parse(message['timestamp']),
+            };
+          }
+        });
+      }
+    } catch (e) {
+      print('Error loading latest group messages: $e');
+    }
+  }
+
+  Widget _buildLatestMessage(String groupId) {
+    final messageData = latestMessages[groupId];
+    if (messageData == null) return const SizedBox.shrink();
+
+    String messageText;
+    if (messageData['isRecalled'] == true) {
+      messageText = 'Message recalled';
+    } else {
+      switch (messageData['type']) {
+        case 'image':
+          messageText = '🖼️ Image';
+          break;
+        case 'file':
+          if (messageData['message'].startsWith('{')) {
+            try {
+              final fileData = json.decode(messageData['message']);
+              messageText = '📎 ${fileData['fileName']}';
+            } catch (e) {
+              messageText = '📎 File';
+            }
+          } else {
+            messageText = '📎 File';
+          }
+          break;
+        default:
+          messageText = messageData['message'] ?? '';
+          if (messageText.length > 30) {
+            messageText = messageText.substring(0, 27) + '...';
+          }
+      }
+    }
+
+    return Text(
+      messageText,
+      style: const TextStyle(
+        fontSize: 13,
+        height: 1.5,
+      ),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
   }
 
   @override
@@ -30,27 +112,85 @@ class _GroupsScreenState extends State<GroupsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Groups'),
-        actions: [
-          ElevatedButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) =>
-                      CreateGroupScreen(userId: widget.userId),
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(70),
+        child: Container(
+          margin: EdgeInsets.only(top: 0, left: 10, right: 10, bottom: 10),
+          child: AppBar(
+            title: Padding(
+              padding: EdgeInsets.only(left: 15, bottom: 15),
+              child: const Text(
+                'Groups',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
                 ),
-              ).then((result) {
-                if (result == true) {
-                  groupsService.refreshGroups(); // Gọi hàm làm mới danh sách
-                }
-              });
-            },
-
-            child: Text('Create Group'),
+              ),
+            ),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            flexibleSpace: Stack(
+              children: [
+                Positioned(
+                  top: 20,
+                  left: 20,
+                  right: 0,
+                  bottom: 1,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Color.fromARGB(255, 57, 51, 66)
+                          : Color.fromARGB(77, 83, 32, 120),
+                      borderRadius: BorderRadius.circular(25),
+                      border: Border.all(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white
+                            : Colors.black,
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 5,
+                  left: 5,
+                  right: 8,
+                  bottom: 10,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Color.fromARGB(255, 77, 68, 89)
+                          : Color.fromARGB(255, 255, 255, 255),
+                      borderRadius: BorderRadius.circular(25),
+                      border: Border.all(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white
+                            : Colors.black,
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              IconButton(
+                icon: Icon(Icons.add),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => CreateGroupScreen(userId: widget.userId),
+                    ),
+                  ).then((result) {
+                    if (result == true) {
+                      groupsService.refreshGroups();
+                    }
+                  });
+                },
+              ),
+            ],
           ),
-        ],
+        ),
       ),
       body: StreamBuilder<List<Map<String, dynamic>>>(
         stream: groupsService.groupsStream,
@@ -72,21 +212,127 @@ class _GroupsScreenState extends State<GroupsScreen> {
             itemCount: groups.length,
             itemBuilder: (context, index) {
               final group = groups[index];
-              return ListTile(
-                title: Text(group['name']),
-                subtitle: Text('Owner: ${group['owner']}'),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => GroupChatScreen(
-                        groupId: group['id'],
-                        userId: widget.userId,
+              return Container(
+                margin: const EdgeInsets.symmetric(vertical: 5.0, horizontal: 10.0),
+                child: Stack(
+                  children: [
+                    Positioned(
+                      top: 11,
+                      left: 11,
+                      child: Container(
+                        width: 380,
+                        height: 70,
+                        decoration: BoxDecoration(
+                          color: Color.fromARGB(77, 175, 112, 221),
+                          borderRadius: BorderRadius.circular(15),
+                          border: Border.all(
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? Colors.white
+                                : Colors.black,
+                            width: 2,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 10,
+                              spreadRadius: 2,
+                              offset: Offset(2, 2),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  );
-
-                },
+                    Positioned(
+                      top: 5,
+                      left: -0.5,
+                      child: Container(
+                        width: 385,
+                        height: 70,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Color.fromARGB(255, 77, 68, 89)
+                              : Color.fromARGB(255, 255, 255, 255),
+                          borderRadius: BorderRadius.circular(15),
+                          border: Border.all(
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? Colors.white
+                                : Colors.black,
+                            width: 2,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 10,
+                              spreadRadius: 2,
+                              offset: Offset(2, 2),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    ListTile(
+                      contentPadding: const EdgeInsets.all(10.0),
+                      leading: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? Colors.white
+                                : Colors.black,
+                            width: 2,
+                          ),
+                        ),
+                        child: CircleAvatar(
+                          child: Icon(Icons.group),
+                          radius: 20,
+                        ),
+                      ),
+                      title: Text(
+                        group['name'],
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (latestMessages.containsKey(group['id']))
+                            _buildLatestMessage(group['id'])
+                          else
+                            Text(
+                              'No messages yet',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                height: 1.5,
+                              ),
+                            ),
+                          SizedBox(height: 4),
+                          Text(
+                            '${group['members']?.length ?? 0} members',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => GroupChatScreen(
+                              groupId: group['id'],
+                              userId: widget.userId,
+                              groupNameReal: group['name'],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
               );
             },
           );

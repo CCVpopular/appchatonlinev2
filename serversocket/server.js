@@ -18,9 +18,13 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
+const { encrypt, decrypt } = require('./utils/encryption');
+
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server);
+const io = socketIo(server, {
+  maxHttpBufferSize: 500 * 1024 * 1024,
+});
 
 const admin = require('firebase-admin');
 
@@ -132,7 +136,10 @@ async function getGroupFileFolderId(baseFolder, groupId) {
 // Multer setup for temporary file storage
 const upload = multer({
   dest: 'temp/',
-  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+  limits: { 
+    fileSize: 500 * 1024 * 1024, // 500MB limit
+    files: 1
+  }
 });
 
 // Kết nối MongoDB
@@ -146,8 +153,8 @@ mongoose.connection.on('error', (err) => console.error('MongoDB connection error
 app.set('socketio', io);
 
 // Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '500mb' }));
+app.use(express.urlencoded({ extended: true, limit: '500mb' }));
 
 // Add console logging middleware to debug requests
 app.use((req, res, next) => {
@@ -200,19 +207,19 @@ io.on('connection', (socket) => {
     try {
       const { sender, receiver, message } = data;
       
-      // Save message and get the MongoDB generated _id
-      const newMessage = new Message({ sender, receiver, message });
+      // Encrypt message before saving
+      const encryptedMessage = encrypt(message);
+      const newMessage = new Message({ sender, receiver, message: encryptedMessage });
       await newMessage.save();
 
-      // Create room name
       const roomName = [sender, receiver].sort().join('_');
 
-      // Include the MongoDB _id in the response
+      // Decrypt message before sending
       io.to(roomName).emit('receiveMessage', {
         _id: newMessage._id,
         sender,
         receiver,
-        message
+        message: message // Send original message to client
       });
 
       // Tìm FCM token của người nhận
@@ -241,6 +248,28 @@ io.on('connection', (socket) => {
         const response = await admin.messaging().send(payload);
         console.log('Notification sent successfully:', response);
       }
+
+      // Emit latest message update to both users
+      const latestMessageData = {
+        friendId: sender,
+        message: message,
+        timestamp: new Date(),
+        type: 'text',
+        isRecalled: false
+      };
+      
+      // Emit to receiver
+      io.to(receiver).emit('latestMessage', {
+        ...latestMessageData,
+        friendId: sender
+      });
+      
+      // Emit to sender
+      io.to(sender).emit('latestMessage', {
+        ...latestMessageData,
+        friendId: receiver
+      });
+
     } catch (err) {
       console.error('Error handling sendMessage:', err);
     }
@@ -299,6 +328,25 @@ io.on('connection', (socket) => {
       });
 
       fs.unlinkSync(tempPath);
+
+      // Emit latest message update for image
+      const latestMessageData = {
+        friendId: sender,
+        message: '[Image]',
+        timestamp: new Date(),
+        type: 'image',
+        isRecalled: false
+      };
+      
+      io.to(receiver).emit('latestMessage', {
+        ...latestMessageData,
+        friendId: sender
+      });
+      
+      io.to(sender).emit('latestMessage', {
+        ...latestMessageData,
+        friendId: receiver
+      });
 
     } catch (err) {
       console.error('Error handling image upload:', err);
@@ -422,6 +470,25 @@ io.on('connection', (socket) => {
       // Cleanup temp file
       fs.unlinkSync(tempPath);
 
+      // Emit latest message update for file
+      const latestMessageData = {
+        friendId: sender,
+        message: `[File: ${fileName}]`,
+        timestamp: new Date(),
+        type: 'file',
+        isRecalled: false
+      };
+      
+      io.to(receiver).emit('latestMessage', {
+        ...latestMessageData,
+        friendId: sender
+      });
+      
+      io.to(sender).emit('latestMessage', {
+        ...latestMessageData,
+        friendId: receiver
+      });
+
     } catch (err) {
       console.error('Error handling file upload:', err);
     }
@@ -512,24 +579,42 @@ io.on('connection', (socket) => {
   // Xử lý gửi tin nhắn nhóm
   socket.on('sendGroupMessage', async ({ groupId, sender, message }) => {
     try {
-      // Lưu tin nhắn vào cơ sở dữ liệu
-      const groupMessage = new GroupMessage({ groupId, sender, message });
+      // Encrypt group message
+      const encryptedMessage = encrypt(message);
+      const groupMessage = new GroupMessage({ 
+        groupId, 
+        sender, 
+        message: encryptedMessage 
+      });
       await groupMessage.save();
 
-      // Get sender's username and group details
       const senderUser = await User.findById(sender);
       const senderName = senderUser ? senderUser.username : 'Unknown';
       const group = await Group.findById(groupId);
-      // Phát tin nhắn tới tất cả thành viên trong nhóm
+
+      // Send original (unencrypted) message to clients
       io.to(groupId).emit('receiveGroupMessage', {
+        _id: groupMessage._id,
         groupId,
         sender,
         senderName,
-        message,
-        timestamp: groupMessage.timestamp,
+        message: message, // Send original message
+        timestamp: groupMessage.timestamp
       });
 
-      // Send push notification to all group members
+      // Add latest message update for groups
+      const latestMessageData = {
+        groupId,
+        message: message,
+        timestamp: new Date(),
+        type: 'text',
+        isRecalled: false
+      };
+
+      // Emit to all group members
+      io.to(groupId).emit('latestGroupMessage', latestMessageData);
+
+      // Handle notifications
       if (group && group.members) {
         const members = await User.find({ _id: { $in: group.members, $ne: sender } });
         
@@ -582,6 +667,25 @@ io.on('connection', (socket) => {
         timestamp: new Date()
       });
 
+      // Emit latest message update for recalled message
+      const latestMessageData = {
+        friendId: sender,
+        message: 'Message recalled',
+        timestamp: new Date(),
+        type: 'text',
+        isRecalled: true
+      };
+      
+      io.to(receiver).emit('latestMessage', {
+        ...latestMessageData,
+        friendId: sender
+      });
+      
+      io.to(sender).emit('latestMessage', {
+        ...latestMessageData,
+        friendId: receiver
+      });
+
     } catch (err) {
       console.error('Error recalling message:', err);
     }
@@ -600,9 +704,10 @@ io.on('connection', (socket) => {
       // Update message in database
       await GroupMessage.findByIdAndUpdate(messageId, { isRecalled: true });
       
-      // Send recall event to group
+      // Send recall event to group with all necessary data
       io.to(groupId).emit('groupMessageRecalled', { 
         messageId,
+        groupId,
         isRecalled: true,
         timestamp: new Date()
       });

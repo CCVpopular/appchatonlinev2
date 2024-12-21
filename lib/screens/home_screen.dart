@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import '../config/config.dart';
 import '../screens/chatbot_screen.dart';
 import '../screens/settings_screen.dart';
 import 'friends_screen.dart';
@@ -16,6 +18,29 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   var selectedIndex = 0;
+  String username = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUsername();
+  }
+
+  Future<void> _fetchUsername() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${Config.apiBaseUrl}/api/users/profile/${widget.userId}'),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          username = data['username'];
+        });
+      }
+    } catch (e) {
+      print('Error fetching username: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +58,7 @@ class _MyHomePageState extends State<MyHomePage> {
         page = ChatBotScreen();
         break;
       case 3:
-        page = SettingsScreen(username: "text", userId: widget.userId);
+        page = SettingsScreen(username: username, userId: widget.userId);
         break;
       default:
         throw UnimplementedError('No widget for $selectedIndex');
