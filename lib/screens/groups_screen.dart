@@ -111,6 +111,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
     return Scaffold(
       appBar: PreferredSize(
         preferredSize: Size.fromHeight(70),
@@ -256,7 +257,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
                         top: 11,
                         left: 11,
                         child: Container(
-                          width: 335,
+                          width: screenWidth * 0.818,
                           height: 70,
                           decoration: BoxDecoration(
                             color: Color.fromARGB(77, 175, 112, 221),
@@ -283,7 +284,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
                         top: 5,
                         left: -0.5,
                         child: Container(
-                          width: 340,
+                          width: screenWidth * 0.83,
                           height: 70,
                           decoration: BoxDecoration(
                             color:
