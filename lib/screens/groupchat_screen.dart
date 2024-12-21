@@ -384,7 +384,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
 
     if (message['type'] == 'image') {
       return Container(
-        padding: EdgeInsets.all(4),
+        padding: EdgeInsets.all(10),
         child: GestureDetector(
           onLongPress: isSender && !isRecalled
               ? () => _showRecallDialog(message['id'])
@@ -405,20 +405,26 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                     ),
                   ),
                 ),
-              CachedNetworkImage(
-                imageUrl: message['message'],
-                placeholder: (context, url) => Container(
-                  width: 50,
-                  height: 50,
-                  child: CircularProgressIndicator(),
+              // Giới hạn kích thước ảnh
+              Container(
+                width: 200, // Giới hạn chiều rộng
+                height: 200, // Giới hạn chiều cao
+                child: CachedNetworkImage(
+                  imageUrl: message['message'],
+                  placeholder: (context, url) => Container(
+                    width: 50,
+                    height: 50,
+                    child: CircularProgressIndicator(),
+                  ),
+                  errorWidget: (context, url, error) => Icon(Icons.error),
+                  fit: BoxFit.cover, // Đảm bảo ảnh có thể co giãn hợp lý
                 ),
-                errorWidget: (context, url, error) => Icon(Icons.error),
               ),
               Text(
                 _formatTime(message['timestamp']),
                 style: const TextStyle(
                   fontSize: 10,
-                  color: Colors.grey,
+                  color: Color.fromARGB(255, 130, 128, 128),
                 ),
               ),
             ],
@@ -435,11 +441,18 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
               : null,
           child: Container(
             padding: const EdgeInsets.all(12.0),
+            width: 300, // Giới hạn chiều rộng
             decoration: BoxDecoration(
               color: isSender
                   ? const Color.fromARGB(145, 130, 190, 197)
                   : Colors.grey[300],
               borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.white // Viền trắng khi chế độ tối
+                    : const Color.fromARGB(255, 0, 0, 0), // Viền đen khi chế độ sáng
+                width: 2, // Độ dày viền
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -504,6 +517,12 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
               ? const Color.fromARGB(145, 130, 190, 197)
               : Colors.grey[300],
           borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.white // Viền trắng khi chế độ tối
+                    : const Color.fromARGB(255, 0, 0, 0), // Viền đen khi chế độ sáng
+                width: 2, // Độ dày viền
+          ),
         ),
         child: Column(
           crossAxisAlignment:
@@ -554,7 +573,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
               _formatTime(message['timestamp']),
               style: const TextStyle(
                 fontSize: 10,
-                color: Colors.grey,
+                color: Color.fromARGB(255, 54, 53, 53),
               ),
             ),
           ],
@@ -573,6 +592,12 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
             ? const Color.fromARGB(145, 130, 190, 197)
             : Colors.grey[300],
         borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.white // Viền trắng khi chế độ tối
+              : const Color.fromARGB(255, 0, 0, 0), // Viền đen khi chế độ sáng
+          width: 2, // Độ dày viền
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -731,135 +756,139 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: PreferredSize(
-  preferredSize: Size.fromHeight(70), // Điều chỉnh chiều cao của AppBar
-  child: Container(
-    margin: EdgeInsets.only(
-      top: 0,
-      left: 10,
-      right: 10,
-      bottom: 10,
-    ), // Thêm margin xung quanh AppBar
-    child: AppBar(
-      title: Row(
-        children: [
-          GestureDetector(
-            onTap: _updateGroupAvatar,
-            child: CircleAvatar(
-              backgroundImage: groupAvatar != null
-                  ? CachedNetworkImageProvider(groupAvatar!)
-                  : null,
-              child: groupAvatar == null ? Icon(Icons.group) : null,
-            ),
-          ),
-          SizedBox(width: 8),
-          Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(top: 0), // Điều chỉnh khoảng cách trên để nhích lên
-              child: Text(
-                widget.groupNameReal,
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
-                style: TextStyle(fontSize: 20),
-              ),
-            ),
-          ),
-        ],
-      ),
-      backgroundColor: Colors.transparent, // Nền trong suốt
-      elevation: 0, // Xóa bóng đổ mặc định của AppBar
-      flexibleSpace: Stack(
-        children: [
-          // Nền thứ nhất (dưới cùng)
-          Positioned(
-            top: 20, // Điều chỉnh vị trí nền thứ nhất
-            left: 20,
-            right: 0,
-            bottom: 1,
-            child: Container(
-              decoration: BoxDecoration(
-                color: Theme.of(context).brightness == Brightness.dark
-                    ? Color.fromARGB(255, 57, 51, 66) // Nền tối
-                    : Color.fromARGB(77, 83, 32, 120), // Nền sáng
-                borderRadius: BorderRadius.circular(25), // Bo góc
-                border: Border.all(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white // Viền trắng khi chế độ tối
-                      : Colors.black, // Viền đen khi chế độ sáng
-                  width: 2, // Độ dày viền
+        preferredSize: Size.fromHeight(70), // Điều chỉnh chiều cao của AppBar
+        child: Container(
+          margin: EdgeInsets.only(
+            top: 0,
+            left: 10,
+            right: 10,
+            bottom: 10,
+          ), // Thêm margin xung quanh AppBar
+          child: AppBar(
+            title: Row(
+              children: [
+                GestureDetector(
+                  onTap: _updateGroupAvatar,
+                  child: CircleAvatar(
+                    backgroundImage: groupAvatar != null
+                        ? CachedNetworkImageProvider(groupAvatar!)
+                        : null,
+                    child: groupAvatar == null ? Icon(Icons.group) : null,
+                  ),
                 ),
-              ),
-            ),
-          ),
-          // Nền thứ hai (chồng lên nền thứ nhất)
-          Positioned(
-            top: 5, // Điều chỉnh vị trí nền thứ hai (giảm top để nền thứ hai nhỏ hơn)
-            left: 5, // Điều chỉnh khoảng cách từ bên trái
-            right: 8, // Điều chỉnh khoảng cách từ bên phải
-            bottom: 10, // Điều chỉnh khoảng cách từ dưới
-            child: Container(
-              decoration: BoxDecoration(
-                color: Theme.of(context).brightness == Brightness.dark
-                    ? Color.fromARGB(255, 77, 68, 89) // Nền nhẹ màu xám khi chế độ tối
-                    : Color.fromARGB(255, 255, 255, 255), // Nền nhẹ màu trắng khi chế độ sáng
-                borderRadius: BorderRadius.circular(25), // Bo góc
-                border: Border.all(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white // Viền trắng khi chế độ tối
-                      : Colors.black, // Viền đen khi chế độ sáng
-                  width: 2, // Độ dày viền
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-      actions: [
-        Padding(
-          padding: EdgeInsets.only(right: 0), // Thêm padding cho các icon
-          child: IconButton(
-            icon: Icon(Icons.call),
-            onPressed: () async {
-              final token = await groupChatService
-                  .initializeGroupCall(widget.groupId);
-              if (token != null) {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => GroupCallScreen(
-                      groupId: widget.groupId,
-                      channelName: widget.groupId,
-                      token: token,
-                      userId: widget.userId,
-                      isInitiator: true,
+                SizedBox(width: 8),
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                        top: 0), // Điều chỉnh khoảng cách trên để nhích lên
+                    child: Text(
+                      widget.groupNameReal,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                      style: TextStyle(fontSize: 20),
                     ),
                   ),
-                );
-              }
-            },
-          ),
-        ),
-        Padding(
-          padding: EdgeInsets.only(right: 20), // Thêm padding cho các icon
-          child: IconButton(
-            icon: Icon(Icons.person_add),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => InviteMemberScreen(
-                    groupId: widget.groupId,
-                    userId: widget.userId,
+                ),
+              ],
+            ),
+            backgroundColor: Colors.transparent, // Nền trong suốt
+            elevation: 0, // Xóa bóng đổ mặc định của AppBar
+            flexibleSpace: Stack(
+              children: [
+                // Nền thứ nhất (dưới cùng)
+                Positioned(
+                  top: 20, // Điều chỉnh vị trí nền thứ nhất
+                  left: 20,
+                  right: 0,
+                  bottom: 1,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Color.fromARGB(255, 57, 51, 66) // Nền tối
+                          : Color.fromARGB(77, 83, 32, 120), // Nền sáng
+                      borderRadius: BorderRadius.circular(25), // Bo góc
+                      border: Border.all(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white // Viền trắng khi chế độ tối
+                            : Colors.black, // Viền đen khi chế độ sáng
+                        width: 2, // Độ dày viền
+                      ),
+                    ),
                   ),
                 ),
-              );
-            },
+                // Nền thứ hai (chồng lên nền thứ nhất)
+                Positioned(
+                  top:
+                      5, // Điều chỉnh vị trí nền thứ hai (giảm top để nền thứ hai nhỏ hơn)
+                  left: 5, // Điều chỉnh khoảng cách từ bên trái
+                  right: 8, // Điều chỉnh khoảng cách từ bên phải
+                  bottom: 10, // Điều chỉnh khoảng cách từ dưới
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Color.fromARGB(
+                              255, 77, 68, 89) // Nền nhẹ màu xám khi chế độ tối
+                          : Color.fromARGB(255, 255, 255,
+                              255), // Nền nhẹ màu trắng khi chế độ sáng
+                      borderRadius: BorderRadius.circular(25), // Bo góc
+                      border: Border.all(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white // Viền trắng khi chế độ tối
+                            : Colors.black, // Viền đen khi chế độ sáng
+                        width: 2, // Độ dày viền
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              Padding(
+                padding: EdgeInsets.only(right: 0), // Thêm padding cho các icon
+                child: IconButton(
+                  icon: Icon(Icons.call),
+                  onPressed: () async {
+                    final token = await groupChatService
+                        .initializeGroupCall(widget.groupId);
+                    if (token != null) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => GroupCallScreen(
+                            groupId: widget.groupId,
+                            channelName: widget.groupId,
+                            token: token,
+                            userId: widget.userId,
+                            isInitiator: true,
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                ),
+              ),
+              Padding(
+                padding:
+                    EdgeInsets.only(right: 20), // Thêm padding cho các icon
+                child: IconButton(
+                  icon: Icon(Icons.person_add),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => InviteMemberScreen(
+                          groupId: widget.groupId,
+                          userId: widget.userId,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
         ),
-      ],
-    ),
-  ),
-),
-
+      ),
       body: Column(
         children: [
           Expanded(
@@ -932,85 +961,89 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
             ),
           ),
           Padding(
-  padding: const EdgeInsets.all(10),
-  child: Container(
-    decoration: BoxDecoration(
-      color: Theme.of(context).brightness == Brightness.dark
-          ? const Color.fromARGB(255, 33, 33, 33) // Nền tối
-          : const Color.fromARGB(255, 255, 255, 255), // Nền sáng
-      borderRadius: BorderRadius.circular(25),
-      border: Border.all(
-        color: Theme.of(context).brightness == Brightness.dark
-            ? Colors.white // Viền trắng khi chế độ tối
-            : Colors.black, // Viền đen khi chế độ sáng
-        width: 2,
-      ),
-    ),
-    child: Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: Row(
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 8.0),
-            child: IconButton(
-              icon: const Icon(Icons.image),
-              onPressed: _pickAndSendImage,
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.white
-                  : const Color.fromARGB(255, 103, 48, 129),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: IconButton(
-              icon: const Icon(Icons.attach_file),
-              onPressed: _pickAndSendFile,
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.white
-                  : const Color.fromARGB(255, 103, 48, 129),
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(left: 10),
-              child: TextField(
-                controller: _controller,
-                maxLength: 1000,
-                buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null, // Ẩn bộ đếm ký tự
-                decoration: InputDecoration(
-                  hintText: 'Enter a message...',
-                  border: InputBorder.none, // Loại bỏ viền của TextField
+            padding: const EdgeInsets.all(10),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? const Color.fromARGB(255, 33, 33, 33) // Nền tối
+                    : const Color.fromARGB(255, 255, 255, 255), // Nền sáng
+                borderRadius: BorderRadius.circular(25),
+                border: Border.all(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white // Viền trắng khi chế độ tối
+                      : Colors.black, // Viền đen khi chế độ sáng
+                  width: 2,
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Row(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8.0),
+                      child: IconButton(
+                        icon: const Icon(Icons.image),
+                        onPressed: _pickAndSendImage,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white
+                            : const Color.fromARGB(255, 103, 48, 129),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: IconButton(
+                        icon: const Icon(Icons.attach_file),
+                        onPressed: _pickAndSendFile,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white
+                            : const Color.fromARGB(255, 103, 48, 129),
+                      ),
+                    ),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 10),
+                        child: TextField(
+                          controller: _controller,
+                          maxLength: 1000,
+                          buildCounter: (context,
+                                  {required currentLength,
+                                  required isFocused,
+                                  maxLength}) =>
+                              null, // Ẩn bộ đếm ký tự
+                          decoration: InputDecoration(
+                            hintText: 'Enter a message...',
+                            border:
+                                InputBorder.none, // Loại bỏ viền của TextField
+                          ),
+                        ),
+                      ),
+                    ),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? const Color.fromARGB(107, 128, 83, 180)
+                            : const Color.fromARGB(255, 255, 255, 255),
+                        border: Border.all(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.white
+                              : Colors.black,
+                          width: 2,
+                        ),
+                        shape: BoxShape.circle,
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.send),
+                        onPressed: _sendMessage,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? const Color.fromARGB(255, 255, 255, 255)
+                            : const Color.fromARGB(255, 103, 48, 129),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
-          Container(
-            decoration: BoxDecoration(
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? const Color.fromARGB(107, 128, 83, 180)
-                  : const Color.fromARGB(255, 255, 255, 255),
-              border: Border.all(
-                color: Theme.of(context).brightness == Brightness.dark
-                    ? Colors.white
-                    : Colors.black,
-                width: 2,
-              ),
-              shape: BoxShape.circle,
-            ),
-            child: IconButton(
-              icon: const Icon(Icons.send),
-              onPressed: _sendMessage,
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? const Color.fromARGB(255, 255, 255, 255)
-                  : const Color.fromARGB(255, 103, 48, 129),
-            ),
-          ),
-        ],
-      ),
-    ),
-  ),
-),
-
         ],
       ),
     );
