@@ -145,23 +145,23 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                             color: isUserMessage
                                 ? Theme.of(context).brightness ==
                                         Brightness.dark
-                                    ? Colors.blueGrey[800]
-                                    : Colors.blue[200]
+                                    ? const Color.fromARGB(255, 76, 65, 86)
+                                    : const Color.fromARGB(255, 179, 144, 249)
                                 : Theme.of(context).brightness ==
                                         Brightness.dark
-                                    ? Colors.grey[700]
-                                    : Colors.grey[300],
+                                    ? const Color.fromARGB(255, 250, 250, 250)
+                                    : const Color.fromARGB(255, 220, 220, 220),
                             borderRadius: BorderRadius.circular(15),
                             border: Border.all(
                               color: isUserMessage
                                   ? Theme.of(context).brightness ==
                                           Brightness.dark
-                                      ? Colors.blue[200]!
-                                      : Colors.blue[600]!
+                                      ? const Color.fromARGB(255, 186, 144, 249)!
+                                      : const Color.fromARGB(255, 116, 30, 229)!
                                   : Theme.of(context).brightness ==
                                           Brightness.dark
-                                      ? Colors.grey[300]!
-                                      : const Color.fromARGB(255, 178, 178, 178)!,
+                                      ? const Color.fromARGB(255, 255, 255, 255)!
+                                      : const Color.fromARGB(255, 0, 0, 0)!,
                               width: 1.5,
                             ),
                           ),
