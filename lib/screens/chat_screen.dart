@@ -532,6 +532,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         ],
       );
     } else if (isImage) {
+      final String imageUrl = message['message'] ?? '';
       return Container(
         constraints: BoxConstraints(
           maxWidth: MediaQuery.of(context).size.width * 0.6,
@@ -545,9 +546,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           alignment: Alignment.center,
           children: [
             GestureDetector(
-              onTap: () => _downloadImage(message['message'] ?? ''),
+              onTap: () => _downloadImage(imageUrl),
               child: CachedNetworkImage(
-                imageUrl: message['message'] ?? '',
+                imageUrl: imageUrl,
                 fit: BoxFit.contain,
                 placeholder: (context, url) => Center(
                   child: Column(
