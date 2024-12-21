@@ -88,6 +88,7 @@ router.get('/latest-messages/:userId', async (req, res) => {
   const { userId } = req.params;
   
   try {
+    // Get latest messages with unread count
     const latestMessages = await Message.aggregate([
       {
         $match: {
@@ -112,7 +113,21 @@ router.get('/latest-messages/:userId', async (req, res) => {
           message: { $first: "$message" },
           timestamp: { $first: "$timestamp" },
           type: { $first: "$type" },
-          isRecalled: { $first: "$isRecalled" }
+          isRecalled: { $first: "$isRecalled" },
+          unreadCount: {
+            $sum: {
+              $cond: [
+                { 
+                  $and: [
+                    { $eq: ["$readStatus", "unread"] },
+                    { $eq: ["$receiver", new mongoose.Types.ObjectId(userId)] }
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          }
         }
       },
       {
@@ -122,6 +137,7 @@ router.get('/latest-messages/:userId', async (req, res) => {
           timestamp: 1,
           type: 1,
           isRecalled: 1,
+          unreadCount: 1,
           _id: 0
         }
       }
