@@ -88,6 +88,7 @@ router.get('/latest-messages/:userId', async (req, res) => {
   const { userId } = req.params;
   
   try {
+    // Get latest messages with unread count
     const latestMessages = await Message.aggregate([
       {
         $match: {
@@ -112,7 +113,21 @@ router.get('/latest-messages/:userId', async (req, res) => {
           message: { $first: "$message" },
           timestamp: { $first: "$timestamp" },
           type: { $first: "$type" },
-          isRecalled: { $first: "$isRecalled" }
+          isRecalled: { $first: "$isRecalled" },
+          unreadCount: {
+            $sum: {
+              $cond: [
+                { 
+                  $and: [
+                    { $eq: ["$readStatus", "unread"] },
+                    { $eq: ["$receiver", new mongoose.Types.ObjectId(userId)] }
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          }
         }
       },
       {
@@ -122,6 +137,7 @@ router.get('/latest-messages/:userId', async (req, res) => {
           timestamp: 1,
           type: 1,
           isRecalled: 1,
+          unreadCount: 1,
           _id: 0
         }
       }
@@ -175,6 +191,36 @@ router.get('/statistics', async (req, res) => {
       error: 'Failed to get message statistics',
       details: err.message
     });
+  }
+});
+
+// Add new route for marking messages as read
+router.post('/mark-read', async (req, res) => {
+  const { senderId, receiverId } = req.body;
+  
+  try {
+    const updatedMessages = await Message.updateMany(
+      { 
+        sender: senderId,
+        receiver: receiverId,
+        status: { $ne: 'read' }
+      },
+      { $set: { status: 'read' } }
+    );
+
+    // Get socket.io instance
+    const io = req.app.get('socketio');
+    
+    // Emit read status update to sender
+    io.to(senderId).emit('messagesRead', { 
+      senderId,
+      receiverId
+    });
+
+    res.json({ success: true, updatedCount: updatedMessages.modifiedCount });
+  } catch (err) {
+    console.error('Error marking messages as read:', err);
+    res.status(500).json({ error: 'Failed to update message status' });
   }
 });
 

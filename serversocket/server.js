@@ -207,9 +207,14 @@ io.on('connection', (socket) => {
     try {
       const { sender, receiver, message } = data;
       
-      // Encrypt message before saving
+      // Add readStatus to new messages
       const encryptedMessage = encrypt(message);
-      const newMessage = new Message({ sender, receiver, message: encryptedMessage });
+      const newMessage = new Message({ 
+        sender, 
+        receiver, 
+        message: encryptedMessage,
+        readStatus: 'unread' // Add read status
+      });
       await newMessage.save();
 
       const roomName = [sender, receiver].sort().join('_');
@@ -255,7 +260,8 @@ io.on('connection', (socket) => {
         message: message,
         timestamp: new Date(),
         type: 'text',
-        isRecalled: false
+        isRecalled: false,
+        readStatus: 'unread' // Add read status
       };
       
       // Emit to receiver

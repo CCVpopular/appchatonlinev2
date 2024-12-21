@@ -182,7 +182,7 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen> {
         padding: EdgeInsets.all(10),
         decoration: BoxDecoration(
           color: Theme.of(context).brightness == Brightness.dark
-              ? Color.fromARGB(255, 57, 51, 66)
+              ? Color.fromARGB(255, 23, 23, 24)
               : Color.fromARGB(255, 255, 255, 255),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(

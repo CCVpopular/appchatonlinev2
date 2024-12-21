@@ -112,40 +112,89 @@ class _GroupsScreenState extends State<GroupsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Groups'),
-        backgroundColor: Colors.transparent,
-        elevation: 4.0,
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color.fromARGB(207, 70, 131, 180),
-                Color.fromARGB(41, 130, 190, 197),
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(70),
+        child: Container(
+          margin: EdgeInsets.only(top: 0, left: 10, right: 10, bottom: 10),
+          child: AppBar(
+            title: Padding(
+              padding: EdgeInsets.only(left: 15, bottom: 15),
+              child: const Text(
+                'Groups',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            flexibleSpace: Stack(
+              children: [
+                Positioned(
+                  top: 20,
+                  left: 20,
+                  right: 0,
+                  bottom: 1,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Color.fromARGB(255, 57, 51, 66)
+                          : Color.fromARGB(77, 83, 32, 120),
+                      borderRadius: BorderRadius.circular(25),
+                      border: Border.all(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white
+                            : Colors.black,
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 5,
+                  left: 5,
+                  right: 8,
+                  bottom: 10,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Color.fromARGB(255, 77, 68, 89)
+                          : Color.fromARGB(255, 255, 255, 255),
+                      borderRadius: BorderRadius.circular(25),
+                      border: Border.all(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white
+                            : Colors.black,
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
+            actions: [
+              Transform.translate(
+                offset: Offset(-10, -5), // Di chuyển 10px sang phải
+                child: IconButton(
+                  icon: Icon(Icons.add),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            CreateGroupScreen(userId: widget.userId),
+                      ),
+                    ).then((result) {
+                      if (result == true) {
+                        groupsService.refreshGroups();
+                      }
+                    });
+                  },
+                ),
+              ),
+            ],
           ),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.add),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) =>
-                      CreateGroupScreen(userId: widget.userId),
-                ),
-              ).then((result) {
-                if (result == true) {
-                  groupsService.refreshGroups();
-                }
-              });
-            },
-          ),
-        ],
       ),
       body: StreamBuilder<List<Map<String, dynamic>>>(
         stream: groupsService.groupsStream,
@@ -163,71 +212,157 @@ class _GroupsScreenState extends State<GroupsScreen> {
           }
 
           final groups = snapshot.data!;
-          return ListView.builder(
-            itemCount: groups.length,
-            itemBuilder: (context, index) {
-              final group = groups[index];
-              return Container(
-                margin: const EdgeInsets.symmetric(vertical: 5.0, horizontal: 10.0),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(15),
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Color.fromARGB(207, 70, 131, 180),
-                      Color.fromARGB(129, 130, 190, 197),
-                    ],
-                  ),
-                ),
-                child: ListTile(
-                  contentPadding: const EdgeInsets.all(10.0),
-                  title: Text(
-                    group['name'],
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Color.fromARGB(255, 0, 0, 0),
+          return Container(
+            margin: const EdgeInsets.all(10.0),
+            padding: const EdgeInsets.all(10.0),
+            decoration: BoxDecoration(
+              gradient: Theme.of(context).brightness == Brightness.dark
+                  ? LinearGradient(
+                      colors: [
+                        Color.fromARGB(255, 37, 3, 55),
+                        Color.fromARGB(255, 53, 11, 75),
+                        Color.fromARGB(255, 61, 22, 82),
+                        Color.fromARGB(255, 161, 110, 188)
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                  : LinearGradient(
+                      colors: [
+                        Color.fromARGB(255, 255, 255, 255),
+                        Color.fromARGB(255, 144, 90, 169)
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                  ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
+              borderRadius: BorderRadius.circular(15),
+              border: Border.all(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.white
+                    : Colors.black,
+                width: 2,
+              ),
+            ),
+            child: ListView.builder(
+              itemCount: groups.length,
+              itemBuilder: (context, index) {
+                final group = groups[index];
+                return Container(
+                  margin: const EdgeInsets.symmetric(
+                      vertical: 5.0, horizontal: 10.0),
+                  child: Stack(
                     children: [
-                      if (latestMessages.containsKey(group['id']))
-                        _buildLatestMessage(group['id'])
-                      else
-                        Text(
-                          'No messages yet',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            height: 1.5,
+                      Positioned(
+                        top: 11,
+                        left: 11,
+                        child: Container(
+                          width: 335,
+                          height: 70,
+                          decoration: BoxDecoration(
+                            color: Color.fromARGB(77, 175, 112, 221),
+                            borderRadius: BorderRadius.circular(15),
+                            border: Border.all(
+                              color: Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? Colors.white
+                                  : Colors.black,
+                              width: 2,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 10,
+                                spreadRadius: 2,
+                                offset: Offset(2, 2),
+                              ),
+                            ],
                           ),
                         ),
-                      SizedBox(height: 4),
-                      Text(
-                        '${group['members']?.length ?? 0} members',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
+                      ),
+                      Positioned(
+                        top: 5,
+                        left: -0.5,
+                        child: Container(
+                          width: 340,
+                          height: 70,
+                          decoration: BoxDecoration(
+                            color:
+                                Theme.of(context).brightness == Brightness.dark
+                                    ? Color.fromARGB(255, 77, 68, 89)
+                                    : Color.fromARGB(255, 255, 255, 255),
+                            borderRadius: BorderRadius.circular(15),
+                            border: Border.all(
+                              color: Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? Colors.white
+                                  : Colors.black,
+                              width: 2,
+                            ),
+                          ),
                         ),
+                      ),
+                      ListTile(
+                        leading: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? Colors.white
+                                  : Colors.black,
+                              width: 2,
+                            ),
+                          ),
+                          child: CircleAvatar(
+                            child: Icon(Icons.group),
+                            radius: 20,
+                          ),
+                        ),
+                        title: Text(
+                          group['name'],
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (latestMessages.containsKey(group['id']))
+                              _buildLatestMessage(group['id'])
+                            else
+                              Text(
+                                'No messages yet',
+                                style:
+                                    const TextStyle(fontSize: 13, height: 1.5),
+                              ),
+                            SizedBox(height: 4),
+                            Text(
+                              '${group['members']?.length ?? 0} members',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => GroupChatScreen(
+                                groupId: group['id'],
+                                userId: widget.userId,
+                                groupNameReal: group['name'],
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     ],
                   ),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => GroupChatScreen(
-                          groupId: group['id'],
-                          userId: widget.userId,
-                          groupNameReal: group['name'],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              );
-            },
+                );
+              },
+            ),
           );
         },
       ),
