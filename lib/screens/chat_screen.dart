@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:appchatonline/config/config.dart';
 import 'package:flutter/material.dart';
@@ -13,6 +14,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
 import '../services/download_service.dart';
+import 'package:flutter/services.dart';
 
 class ChatScreen extends StatefulWidget {
   final String userId;
@@ -25,7 +27,7 @@ class ChatScreen extends StatefulWidget {
   _ChatScreenState createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
+class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   late ChatService chatService;
   final TextEditingController _controller = TextEditingController();
   final List<Map<String, String>> messages = [];
@@ -39,11 +41,15 @@ class _ChatScreenState extends State<ChatScreen> {
   static const int _pageSize = 20;
   bool _isLoadingMore = false;
   bool _hasMore = true;
+  bool _isScreenVisible = true;
+  Timer? _readStatusTimer;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initializeChatService();
+    _onScreenVisible(); // Initial read status update
   }
 
   void _initializeChatService() {
@@ -322,10 +328,56 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _readStatusTimer?.cancel();
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     chatService.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _onScreenVisible();
+    } else if (state == AppLifecycleState.paused) {
+      _isScreenVisible = false;
+      _readStatusTimer?.cancel();
+    }
+  }
+
+  void _onScreenVisible() {
+    _isScreenVisible = true;
+    _markMessagesAsRead();
+    
+    // Setup periodic read status updates while screen is visible
+    _readStatusTimer?.cancel();
+    _readStatusTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (_isScreenVisible) {
+        _markMessagesAsRead();
+      }
+    });
+  }
+
+  Future<void> _markMessagesAsRead() async {
+    if (!_isScreenVisible) return;
+    
+    try {
+      final response = await http.post(
+        Uri.parse('${Config.apiBaseUrl}/api/messages/mark-read'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'senderId': widget.friendId, // Messages FROM friend
+          'receiverId': widget.userId,  // Messages TO current user
+        }),
+      );
+
+      if (response.statusCode != 200) {
+        print('Error marking messages as read: ${response.body}');
+      }
+    } catch (e) {
+      print('Error marking messages as read: $e');
+    }
   }
 
   Widget _buildAvatar(String? avatarUrl, bool isCurrentUser) {
@@ -605,12 +657,29 @@ class _ChatScreenState extends State<ChatScreen> {
           children: [
             Text(message['message'] ?? ''),
             const SizedBox(height: 4),
-            Text(
-              timeStr,
-              style: const TextStyle(
-                fontSize: 12,
-                color: Colors.grey,
-              ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  timeStr,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey,
+                  ),
+                ),
+                if (message['sender'] == widget.userId) ...[
+                  const SizedBox(width: 4),
+                  Icon(
+                    message['status'] == 'read' 
+                        ? Icons.done_all 
+                        : Icons.done,
+                    size: 12,
+                    color: message['status'] == 'read' 
+                        ? Colors.blue 
+                        : Colors.grey,
+                  ),
+                ],
+              ],
             ),
           ],
         ),

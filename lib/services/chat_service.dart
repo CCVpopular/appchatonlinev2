@@ -29,11 +29,16 @@ class ChatService {
     socket.off('messageRecalled');
     
     socket.on('receiveMessage', (data) {
+      if (data['sender'] != userId) {
+        // Mark message as unread initially for received messages
+        data['status'] = 'sent';
+      }
       _messageStreamController.add({
         'id': data['_id'], // Use the MongoDB _id from server
         'sender': data['sender'],
         'message': data['message'],
         'type': data['type'] ?? 'text',
+        'status': data['status'] ?? 'sent',
         'isRecalled': 'false',
         'timestamp': DateTime.now().toIso8601String(),
       });
@@ -41,6 +46,16 @@ class ChatService {
 
     socket.on('messageRecalled', (data) {
       _recallStreamController.add(data['messageId']);
+    });
+
+    socket.on('messagesRead', (data) {
+      if (data['senderId'] == userId) {
+        // Update UI to show messages as read
+        _messageStreamController.add({
+          'type': 'status_update',
+          'status': 'read'
+        });
+      }
     });
 
     // Leave any existing rooms first
@@ -168,6 +183,7 @@ class ChatService {
               'type': msg['type']?.toString() ?? 'text',
               'isRecalled': msg['isRecalled']?.toString() ?? 'false',
               'timestamp': msg['timestamp']?.toString() ?? DateTime.now().toIso8601String(),
+              'status': msg['status']?.toString() ?? 'sent',
             };
           }).toList(),
           'hasMore': data['hasMore'],

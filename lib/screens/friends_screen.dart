@@ -168,85 +168,208 @@ class _FriendsScreenState extends State<FriendsScreen> {
   }
 
   Widget _buildChatTile(Map<String, dynamic> friendData, String friendId) {
+    final hasUnreadMessages = latestMessages[friendId]?['unreadCount'] != null && 
+                            latestMessages[friendId]!['unreadCount'] > 0;
+    
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 5.0, horizontal: 10.0),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(15),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color.fromARGB(207, 70, 131, 180),
-            Color.fromARGB(129, 130, 190, 197),
-          ],
-        ),
-      ),
-      child: ListTile(
-        leading: Stack(
-          children: [
-            CircleAvatar(
-              backgroundImage: friendData['avatar'] != null &&
-                      friendData['avatar'].isNotEmpty
-                  ? NetworkImage(friendData['avatar'])
-                  : null,
-              child:
-                  friendData['avatar'] == null || friendData['avatar'].isEmpty
-                      ? Icon(Icons.person)
-                      : null,
+      child: Stack(
+        children: [
+          // First background (changed colors and glow effect for unread)
+          Positioned(
+            top: 11,
+            left: 11,
+            child: Container(
+              width: 380,
+              height: 70,
+              decoration: BoxDecoration(
+                color: hasUnreadMessages 
+                  ? Color.fromARGB(255, 255, 182, 193)  // Brighter pink for unread
+                  : Color.fromARGB(77, 175, 112, 221),  // Original color
+                borderRadius: BorderRadius.circular(15),
+                border: Border.all(
+                  color: hasUnreadMessages
+                      ? Colors.pink[300]!  // Pink border for unread
+                      : Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white
+                          : Colors.black,
+                  width: hasUnreadMessages ? 2.5 : 2,  // Slightly thicker border for unread
+                ),
+                boxShadow: [
+                  if (hasUnreadMessages) 
+                    BoxShadow(  // Glowing effect for unread
+                      color: Colors.pink[200]!.withOpacity(0.5),
+                      blurRadius: 15,
+                      spreadRadius: 1,
+                    ),
+                  BoxShadow(
+                    color: hasUnreadMessages
+                        ? Colors.pink[100]!.withOpacity(0.4)
+                        : Colors.black.withOpacity(0.2),
+                    blurRadius: 10,
+                    spreadRadius: 2,
+                    offset: Offset(2, 2),
+                  ),
+                ],
+              ),
             ),
-            Positioned(
-              right: 0,
-              bottom: 0,
-              child: _buildStatusIndicator(friendData['status'] ?? 'offline'),
-            ),
-          ],
-        ),
-        title: Text(
-          friendData['username'] ?? 'Unknown',
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
           ),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (latestMessages.containsKey(friendId))
-              _buildLatestMessage(friendId)
-            else
-              Text(
-                'No messages yet',
+          // Second background
+          Positioned(
+            top: 5,
+            left: -0.5,
+            child: Container(
+              width: 385,
+              height: 70,
+              decoration: BoxDecoration(
+                color: hasUnreadMessages
+                    ? Colors.pink[50]  // Very light pink background for unread
+                    : Theme.of(context).brightness == Brightness.dark
+                        ? Color.fromARGB(255, 77, 68, 89)
+                        : Color.fromARGB(255, 255, 255, 255),
+                borderRadius: BorderRadius.circular(15),
+                border: Border.all(
+                  color: hasUnreadMessages
+                      ? Colors.pink[300]!
+                      : Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white
+                          : Colors.black,
+                  width: hasUnreadMessages ? 2.5 : 2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: hasUnreadMessages
+                        ? Colors.pink[100]!.withOpacity(0.4)
+                        : Colors.black.withOpacity(0.2),
+                    blurRadius: 10,
+                    spreadRadius: 2,
+                    offset: Offset(2, 2),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Content ListTile
+          Positioned(
+            child: ListTile(
+              leading: Stack(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(
+                        2), // Khoảng cách giữa viền và avatar
+                    decoration: BoxDecoration(
+                      shape: BoxShape
+                          .circle, // Đảm bảo avatar là hình tròn
+                      border: Border.all(
+                        color: Theme.of(context).brightness ==
+                                Brightness.dark
+                            ? const Color.fromARGB(255, 255, 255,
+                                255) // Viền trắng khi ở chế độ tối
+                            : Colors
+                                .black, // Viền đen khi ở chế độ sáng
+                        width: 2, // Độ dày viền
+                      ),
+                    ),
+                    child: CircleAvatar(
+                      backgroundImage: friendData['avatar'] != null &&
+                              friendData['avatar'].isNotEmpty
+                          ? NetworkImage(friendData['avatar'])
+                          : null,
+                      child: friendData['avatar'] == null ||
+                              friendData['avatar'].isEmpty
+                          ? Icon(Icons.person)
+                          : null,
+                      radius: 20, // Bán kính avatar
+                    ),
+                  ),
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: _buildStatusIndicator(
+                        friendData['status'] ?? 'offline'),
+                  ),
+                ],
+              ),
+              title: Text(
+                friendData['username'] ?? 'Unknown',
                 style: const TextStyle(
-                  color: Colors.black54,
-                  fontSize: 13,
-                  height: 1.5,
+                  fontWeight: FontWeight.bold,
+                  //color: Colors.black87,
                 ),
               ),
-            const SizedBox(height: 4),
-            Text(
-              friendData['status'] == 'online' ? 'Online' : 'Offline',
-              style: TextStyle(
-                color: friendData['status'] == 'online'
-                    ? Color(0xFF4CAF50)
-                    : Color(0xFF9E9E9E),
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (latestMessages.containsKey(friendData['_id']))
+                    _buildLatestMessage(friendData['_id'])
+                  else
+                    Text(
+                      'No messages yet',
+                      style: const TextStyle(
+                        //color: Colors.black54,
+                        fontSize: 13,
+                        height: 1.5,
+                      ),
+                    ),
+                  const SizedBox(height: 4),
+                  Text(
+                    friendData['status'] == 'online'
+                        ? 'Online'
+                        : 'Offline',
+                    style: TextStyle(
+                      color: friendData['status'] == 'online'
+                          ? Color(0xFF4CAF50)
+                          : Color(0xFF9E9E9E),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ChatScreen(
+                      userId: widget.userId,
+                      friendId: friendData['_id'],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          // Improved unread badge
+          if (hasUnreadMessages)
+            Positioned(
+              top: 8,
+              right: 12,
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.pink[400],
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.pink[200]!.withOpacity(0.5),
+                      blurRadius: 4,
+                      spreadRadius: 0,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Text(
+                  '${latestMessages[friendId]!['unreadCount']}',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ),
-          ],
-        ),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ChatScreen(
-                userId: widget.userId,
-                friendId: friendId,
-              ),
-            ),
-          );
-        },
+        ],
       ),
     );
   }
