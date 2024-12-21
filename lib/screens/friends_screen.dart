@@ -473,8 +473,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                           leading: Stack(
                             children: [
                               Container(
-                                padding: const EdgeInsets.all(
-                                    2), // Khoảng cách giữa viền và avatar
+                                padding: const EdgeInsets.all(2), // Khoảng cách giữa viền và avatar
                                 decoration: BoxDecoration(
                                   shape: BoxShape
                                       .circle, // Đảm bảo avatar là hình tròn
