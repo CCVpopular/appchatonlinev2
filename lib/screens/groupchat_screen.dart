@@ -447,6 +447,12 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                   ? const Color.fromARGB(145, 130, 190, 197)
                   : Colors.grey[300],
               borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.white // Viền trắng khi chế độ tối
+                    : const Color.fromARGB(255, 0, 0, 0), // Viền đen khi chế độ sáng
+                width: 2, // Độ dày viền
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -511,6 +517,12 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
               ? const Color.fromARGB(145, 130, 190, 197)
               : Colors.grey[300],
           borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.white // Viền trắng khi chế độ tối
+                    : const Color.fromARGB(255, 0, 0, 0), // Viền đen khi chế độ sáng
+                width: 2, // Độ dày viền
+          ),
         ),
         child: Column(
           crossAxisAlignment:
@@ -561,7 +573,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
               _formatTime(message['timestamp']),
               style: const TextStyle(
                 fontSize: 10,
-                color: Colors.grey,
+                color: Color.fromARGB(255, 54, 53, 53),
               ),
             ),
           ],
@@ -580,6 +592,12 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
             ? const Color.fromARGB(145, 130, 190, 197)
             : Colors.grey[300],
         borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.white // Viền trắng khi chế độ tối
+              : const Color.fromARGB(255, 0, 0, 0), // Viền đen khi chế độ sáng
+          width: 2, // Độ dày viền
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

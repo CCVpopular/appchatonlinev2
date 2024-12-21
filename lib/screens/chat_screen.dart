@@ -530,7 +530,13 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         ),
         decoration: BoxDecoration(
           color: Colors.grey[200],
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(0),
+          border: Border.all(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.white // Viền trắng khi chế độ tối
+                    : const Color.fromARGB(255, 0, 0, 0), // Viền đen khi chế độ sáng
+                width: 2, // Độ dày viền
+          ),
         ),
         child: Stack(
           alignment: Alignment.center,
@@ -573,7 +579,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Colors.black54,
+                  color: const Color.fromARGB(137, 89, 88, 88),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -596,9 +602,15 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         width: 300, // Giới hạn chiều rộng
         decoration: BoxDecoration(
           color: message['sender'] == widget.userId
-              ? const Color.fromARGB(145, 130, 190, 197)
+              ? const Color.fromARGB(80, 255, 255, 255)
               : Colors.grey[300],
           borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.white // Viền trắng khi chế độ tối
+                    : const Color.fromARGB(255, 0, 0, 0), // Viền đen khi chế độ sáng
+                width: 2, // Độ dày viền
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -639,9 +651,15 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         padding: const EdgeInsets.all(12.0),
         decoration: BoxDecoration(
           color: message['sender'] == widget.userId
-              ? const Color.fromARGB(145, 130, 190, 197)
+              ? const Color.fromARGB(80, 255, 255, 255)
               : Colors.grey[300],
           borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.white // Viền trắng khi chế độ tối
+                    : const Color.fromARGB(255, 0, 0, 0), // Viền đen khi chế độ sáng
+                width: 2, // Độ dày viền
+          ),
         ),
         child: Column(
           crossAxisAlignment: message['sender'] == widget.userId
