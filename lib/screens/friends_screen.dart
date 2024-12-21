@@ -376,6 +376,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
     return Scaffold(
       appBar: PreferredSize(
         preferredSize: Size.fromHeight(70), // Điều chỉnh chiều cao của AppBar
@@ -552,7 +553,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                         top: 11,
                         left: 11,
                         child: Container(
-                          width: 335,
+                          width: screenWidth * 0.818,
                           height: 70,
                           decoration: BoxDecoration(
                             color: Color.fromARGB(255, 123, 77, 149), // Màu nền cho hình đầu tiên
@@ -571,7 +572,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                         top: 5,
                         left: -0.5,
                         child: Container(
-                          width: 340,
+                          width: screenWidth * 0.83,
                           height: 70,
                           decoration: BoxDecoration(
                             color:

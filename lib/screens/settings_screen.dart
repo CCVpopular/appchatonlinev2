@@ -90,7 +90,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final themeNotifier = Provider.of<ValueNotifier<ThemeMode>>(context);
-
     return Scaffold(
       appBar: PreferredSize(
         preferredSize: Size.fromHeight(70), // Điều chỉnh chiều cao của AppBar
@@ -175,9 +174,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               top: 30,
               left: 30,
               right: 0,
-              bottom: 300,
+              bottom: 280,
               child: Container(
-                height: 250, // Đặt chiều cao cho nền thứ nhất
                 decoration: BoxDecoration(
                   color: Theme.of(context).brightness == Brightness.dark
                       ? Color.fromARGB(255, 57, 51, 66) // Nền tối
@@ -197,7 +195,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               top: 10, // Điều chỉnh vị trí của nền thứ hai
               left: 10,
               right: 10,
-              bottom: 310,
+              bottom: 290,
               child: Container(
                 height: 200, // Đặt chiều cao cho nền thứ hai
                 decoration: BoxDecoration(
@@ -218,12 +216,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             //nen thu ba chua setting chon dark light mode
             Positioned(
-              top: 350,
+              top: 370,
               left: 30,
               right: 0,
-              bottom: 120,
+              bottom: 90,
               child: Container(
-                height: 250, // Đặt chiều cao cho nền thứ nhất
                 decoration: BoxDecoration(
                   color: Theme.of(context).brightness == Brightness.dark
                       ? Color.fromARGB(255, 57, 51, 66) // Nền tối
@@ -240,12 +237,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             //nen thu tu setting chon dark light mode
             Positioned(
-              top: 330, // Điều chỉnh vị trí của nền thứ hai
+              top: 350, // Điều chỉnh vị trí của nền thứ hai
               left: 10,
               right: 10,
-              bottom: 130,
+              bottom: 100,
               child: Container(
-                height: 200, // Đặt chiều cao cho nền thứ hai
                 decoration: BoxDecoration(
                   color: Theme.of(context).brightness == Brightness.dark
                       ? Color.fromARGB(
@@ -314,7 +310,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   SizedBox(height: 10),
                   Text('Username: ${widget.username}'),
                   Text('User ID: ${widget.userId}'),
-                  SizedBox(height: 40),
+                  SizedBox(height: 60),
                   // Divider(),
                   ListTile(
                     leading: Padding(
@@ -333,8 +329,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       child: Text('Select light or dark theme'),
                     ),
                     trailing: Padding(
-                      padding: EdgeInsets.only(
-                          left: 10), // Dời phần dropdown sang trái
+                      padding: EdgeInsets.only(left: 10), // Dời phần dropdown sang trái
                       child: DropdownButton<ThemeMode>(
                         value: themeNotifier.value,
                         items: [
