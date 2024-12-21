@@ -258,10 +258,14 @@ class _FriendsScreenState extends State<FriendsScreen> {
         preferredSize: Size.fromHeight(70), // Điều chỉnh chiều cao của AppBar
         child: Container(
           margin: EdgeInsets.only(
-              top: 0, left: 10, right: 10, bottom: 10), // Thêm margin xung quanh AppBar
+              top: 0,
+              left: 10,
+              right: 10,
+              bottom: 10), // Thêm margin xung quanh AppBar
           child: AppBar(
             title: Padding(
-              padding: EdgeInsets.only(left: 15,bottom: 15), // Thêm padding cho tiêu đề
+              padding: EdgeInsets.only(
+                  left: 15, bottom: 15), // Thêm padding cho tiêu đề
               child: const Text(
                 'Friends',
                 style: TextStyle(
@@ -283,7 +287,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   child: Container(
                     decoration: BoxDecoration(
                       color: Theme.of(context).brightness == Brightness.dark
-                          ? Color.fromARGB(255, 57, 51, 66)  // Nền tối
+                          ? Color.fromARGB(255, 57, 51, 66) // Nền tối
                           : Color.fromARGB(77, 83, 32, 120), // Nền sáng
                       borderRadius: BorderRadius.circular(25), // Bo góc
                       border: Border.all(
@@ -315,7 +319,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                             ? Colors.white // Viền trắng khi chế độ tối
                             : Colors.black, // Viền đen khi chế độ sáng
                         width: 2, // Độ dày viền
-                      ),  
+                      ),
                     ),
                   ),
                 ),
@@ -384,183 +388,176 @@ class _FriendsScreenState extends State<FriendsScreen> {
           if (friends.isEmpty) {
             return Center(child: Text('No friends yet'));
           }
-          return ListView.builder(
-            itemCount: friends.length,
-            itemBuilder: (context, index) {
-              final friend = friends[index];
-              final friendData = friend['requester']['_id'] == widget.userId
-                  ? friend['receiver']
-                  : friend['requester'];
+          return Container(
+            margin: const EdgeInsets.all(10.0), // Khoảng cách bên ngoài viền
+            padding: const EdgeInsets.all(10.0), // Khoảng cách bên trong viền
+            decoration: BoxDecoration(
+              gradient: Theme.of(context).brightness == Brightness.dark
+                  ? LinearGradient(
+                      colors: [Color.fromARGB(255, 37, 3, 55), Color.fromARGB(255, 101, 37, 173), Color.fromARGB(255, 76, 59, 118), Color.fromARGB(255, 151, 122, 189)], // Gradient cho chế độ tối
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                  : LinearGradient(
+                      colors: [Color.fromARGB(255, 255, 255, 255), Color.fromARGB(255, 144, 90, 169)], // Gradient cho chế độ sáng
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+              borderRadius: BorderRadius.circular(15), // Bo góc cho viền
+              border: Border.all(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.white // Viền trắng khi chế độ tối
+                    : const Color.fromARGB(255, 0, 0, 0), // Viền đen khi chế độ sáng
+                width: 2, // Độ dày viền
+              ),
+            ),
+            child: ListView.builder(
+              itemCount: friends.length,
+              itemBuilder: (context, index) {
+                final friend = friends[index];
+                final friendData = friend['requester']['_id'] == widget.userId
+                    ? friend['receiver']
+                    : friend['requester'];
 
-              // Print debug information
-              print('Friend ID: ${friendData['_id']}');
-              print(
-                  'Latest message for this friend: ${latestMessages[friendData['_id']]}');
-
-              return Container(
-                margin:
-                    const EdgeInsets.symmetric(vertical: 5.0, horizontal: 10.0),
-                child: Stack(
-                  children: [
-                    // Hình nền thứ nhất chéo
-                    Positioned(
-                      top: 11,
-                      left: 11,
-                      child: Container(
-                        width: 380,
-                        height: 70,
-                        decoration: BoxDecoration(
-                          color: Color.fromARGB(
-                              77, 175, 112, 221), // Màu nền cho hình đầu tiên
-                          borderRadius: BorderRadius.circular(15),
-                          border: Border.all(
-                            color: Theme.of(context).brightness ==
-                                    Brightness.dark
-                                ? Colors.white // Viền trắng khi ở chế độ tối
-                                : Colors.black, // Viền đen khi ở chế độ sáng
-                            width: 2, // Độ dày viền
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black
-                                  .withOpacity(0.2), // Màu bóng đổ đen
-                              blurRadius: 10,
-                              spreadRadius: 2,
-                              offset: Offset(2, 2), // Định vị bóng đổ
+                return Container(
+                  margin: const EdgeInsets.symmetric(
+                      vertical: 5.0, horizontal: 10.0),
+                  child: Stack(
+                    children: [
+                      // Hình nền thứ nhất chéo
+                      Positioned(
+                        top: 11,
+                        left: 11,
+                        child: Container(
+                          width: 335,
+                          height: 70,
+                          decoration: BoxDecoration(
+                            color: Color.fromARGB(255, 123, 77, 149), // Màu nền cho hình đầu tiên
+                            borderRadius: BorderRadius.circular(15),
+                            border: Border.all(
+                              color: Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.white // Viền trắng khi chế độ tối
+                                  : const Color.fromARGB(255, 0, 0, 0), // Viền đen khi chế độ sáng
+                              width: 2, // Độ dày viền
                             ),
-                          ],
+                          ),
                         ),
                       ),
-                    ),
-                    // Hình nền thứ hai chéo
-                    Positioned(
-                      top: 5,
-                      left: -0.5,
-                      child: Container(
-                        width: 385,
-                        height: 70,
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? Color.fromARGB(255, 77, 68,
-                                  89) // Màu nền tối khi ở chế độ tối
-                              : Color.fromARGB(255, 255, 255,
-                                  255), // Màu nền sáng khi ở chế độ sáng // Màu nền cho hình thứ hai
-                          borderRadius: BorderRadius.circular(15),
+                      // Hình nền thứ hai chéo
+                      Positioned(
+                        top: 5,
+                        left: -0.5,
+                        child: Container(
+                          width: 340,
+                          height: 70,
+                          decoration: BoxDecoration(
+                            color:
+                                Theme.of(context).brightness == Brightness.dark
+                                    ? Color.fromARGB(255, 77, 68,
+                                        89) // Màu nền tối khi ở chế độ tối
+                                    : Color.fromARGB(255, 255, 255,
+                                        255), // Màu nền sáng khi ở chế độ sáng
                           border: Border.all(
-                            color: Theme.of(context).brightness ==
-                                    Brightness.dark
-                                ? const Color.fromARGB(255, 255, 255,
-                                    255) // Viền trắng khi ở chế độ tối
-                                : Colors.black, // Viền đen khi ở chế độ sáng
-                            width: 2, // Độ dày viền
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black
-                                  .withOpacity(0.2), // Màu bóng đổ đen
-                              blurRadius: 10,
-                              spreadRadius: 2,
-                              offset: Offset(2, 2), // Định vị bóng đổ
+                              color: Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.white // Viền trắng khi chế độ tối
+                                  : const Color.fromARGB(255, 0, 0, 0), // Viền đen khi chế độ sáng
+                              width: 2, // Độ dày viền
                             ),
-                          ],
+                            borderRadius: BorderRadius.circular(15),
+                          ),
                         ),
                       ),
-                    ),
-                    // Nội dung thẻ
-                    Positioned(
-                      child: ListTile(
-                        leading: Stack(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(
-                                  2), // Khoảng cách giữa viền và avatar
-                              decoration: BoxDecoration(
-                                shape: BoxShape
-                                    .circle, // Đảm bảo avatar là hình tròn
-                                border: Border.all(
-                                  color: Theme.of(context).brightness ==
-                                          Brightness.dark
-                                      ? const Color.fromARGB(255, 255, 255,
-                                          255) // Viền trắng khi ở chế độ tối
-                                      : Colors
-                                          .black, // Viền đen khi ở chế độ sáng
-                                  width: 2, // Độ dày viền
+                      // Nội dung thẻ
+                      Positioned(
+                        child: ListTile(
+                          leading: Stack(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(
+                                    2), // Khoảng cách giữa viền và avatar
+                                decoration: BoxDecoration(
+                                  shape: BoxShape
+                                      .circle, // Đảm bảo avatar là hình tròn
+                                  border: Border.all(
+                                    color: Theme.of(context).brightness ==
+                                            Brightness.dark
+                                        ? const Color.fromARGB(255, 255, 255,
+                                            255) // Viền trắng khi ở chế độ tối
+                                        : Colors
+                                            .black, // Viền đen khi ở chế độ sáng
+                                    width: 2, // Độ dày viền
+                                  ),
+                                ),
+                                child: CircleAvatar(
+                                  backgroundImage:
+                                      friendData['avatar'] != null &&
+                                              friendData['avatar'].isNotEmpty
+                                          ? NetworkImage(friendData['avatar'])
+                                          : null,
+                                  child: friendData['avatar'] == null ||
+                                          friendData['avatar'].isEmpty
+                                      ? Icon(Icons.person)
+                                      : null,
+                                  radius: 20, // Bán kính avatar
                                 ),
                               ),
-                              child: CircleAvatar(
-                                backgroundImage: friendData['avatar'] != null &&
-                                        friendData['avatar'].isNotEmpty
-                                    ? NetworkImage(friendData['avatar'])
-                                    : null,
-                                child: friendData['avatar'] == null ||
-                                        friendData['avatar'].isEmpty
-                                    ? Icon(Icons.person)
-                                    : null,
-                                radius: 20, // Bán kính avatar
+                              Positioned(
+                                right: 0,
+                                bottom: 0,
+                                child: _buildStatusIndicator(
+                                    friendData['status'] ?? 'offline'),
                               ),
-                            ),
-                            Positioned(
-                              right: 0,
-                              bottom: 0,
-                              child: _buildStatusIndicator(
-                                  friendData['status'] ?? 'offline'),
-                            ),
-                          ],
-                        ),
-                        title: Text(
-                          friendData['username'] ?? 'Unknown',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            //color: Colors.black87,
+                            ],
                           ),
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (latestMessages.containsKey(friendData['_id']))
-                              _buildLatestMessage(friendData['_id'])
-                            else
+                          title: Text(
+                            friendData['username'] ?? 'Unknown',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (latestMessages.containsKey(friendData['_id']))
+                                _buildLatestMessage(friendData['_id'])
+                              else
+                                Text(
+                                  'No messages yet',
+                                  style: const TextStyle(
+                                      fontSize: 13, height: 1.5),
+                                ),
+                              const SizedBox(height: 4),
                               Text(
-                                'No messages yet',
-                                style: const TextStyle(
-                                  //color: Colors.black54,
-                                  fontSize: 13,
-                                  height: 1.5,
+                                friendData['status'] == 'online'
+                                    ? 'Online'
+                                    : 'Offline',
+                                style: TextStyle(
+                                  color: friendData['status'] == 'online'
+                                      ? Color(0xFF4CAF50)
+                                      : Color(0xFF9E9E9E),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
-                            const SizedBox(height: 4),
-                            Text(
-                              friendData['status'] == 'online'
-                                  ? 'Online'
-                                  : 'Offline',
-                              style: TextStyle(
-                                color: friendData['status'] == 'online'
-                                    ? Color(0xFF4CAF50)
-                                    : Color(0xFF9E9E9E),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
+                            ],
+                          ),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ChatScreen(
+                                  userId: widget.userId,
+                                  friendId: friendData['_id'],
+                                ),
                               ),
-                            ),
-                          ],
+                            );
+                          },
                         ),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ChatScreen(
-                                userId: widget.userId,
-                                friendId: friendData['_id'],
-                              ),
-                            ),
-                          );
-                        },
                       ),
-                    ),
-                  ],
-                ),
-              );
-            },
+                    ],
+                  ),
+                );
+              },
+            ),
           );
         },
       ),
