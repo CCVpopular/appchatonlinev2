@@ -142,27 +142,15 @@ class GroupChatService {
       final base64Image = base64Encode(bytes);
       final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
 
-      // Emit temporary message to show loading state
-      _messagesgroupStreamController.add([..._currentMessages, {
-        'id': 'temp_${DateTime.now().millisecondsSinceEpoch}',
-        'sender': '',
-        'message': 'Uploading image...',
-        'timestamp': DateTime.now().toIso8601String(),
-        'senderId': sender,
-        'type': 'loading',
-        'isTemporary': true,
-      }]);
-
-      if (onProgress != null) onProgress(0.5); // Show 50% progress
-
-      _socket.emit('sendGroupImage', {
+      socket.emit('sendGroupImage', {
         'groupId': groupId,
         'sender': sender,
         'imageData': base64Image,
         'fileName': fileName,
+        'isRecalled': false, // Add this line
       });
 
-      if (onProgress != null) onProgress(1.0); // Show 100% progress
+      if (onProgress != null) onProgress(1.0);
     } catch (e) {
       print('Error sending image: $e');
       rethrow;
@@ -171,31 +159,19 @@ class GroupChatService {
 
   Future<void> sendFile(String sender, File file, String fileName, String mimeType, {Function(double)? onProgress}) async {
     try {
-      // Emit temporary message to show loading state
-      _messagesgroupStreamController.add([..._currentMessages, {
-        'id': 'temp_${DateTime.now().millisecondsSinceEpoch}',
-        'sender': '',
-        'message': 'Uploading $fileName...',
-        'timestamp': DateTime.now().toIso8601String(),
-        'senderId': sender,
-        'type': 'loading',
-        'isTemporary': true,
-      }]);
-
       final bytes = await file.readAsBytes();
       final base64File = base64Encode(bytes);
 
-      if (onProgress != null) onProgress(0.5); // Show 50% progress
-
-      _socket.emit('sendGroupFile', {
+      socket.emit('sendGroupFile', {
         'groupId': groupId,
         'sender': sender,
         'fileData': base64File,
         'fileName': fileName,
         'fileType': mimeType,
+        'isRecalled': false, // Add this line
       });
 
-      if (onProgress != null) onProgress(1.0); // Show 100% progress
+      if (onProgress != null) onProgress(1.0);
     } catch (e) {
       print('Error sending file: $e');
       rethrow;

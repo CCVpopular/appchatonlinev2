@@ -18,6 +18,8 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
+const { encrypt, decrypt } = require('./utils/encryption');
+
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
@@ -205,19 +207,19 @@ io.on('connection', (socket) => {
     try {
       const { sender, receiver, message } = data;
       
-      // Save message and get the MongoDB generated _id
-      const newMessage = new Message({ sender, receiver, message });
+      // Encrypt message before saving
+      const encryptedMessage = encrypt(message);
+      const newMessage = new Message({ sender, receiver, message: encryptedMessage });
       await newMessage.save();
 
-      // Create room name
       const roomName = [sender, receiver].sort().join('_');
 
-      // Include the MongoDB _id in the response
+      // Decrypt message before sending
       io.to(roomName).emit('receiveMessage', {
         _id: newMessage._id,
         sender,
         receiver,
-        message
+        message: message // Send original message to client
       });
 
       // Tìm FCM token của người nhận
@@ -577,25 +579,42 @@ io.on('connection', (socket) => {
   // Xử lý gửi tin nhắn nhóm
   socket.on('sendGroupMessage', async ({ groupId, sender, message }) => {
     try {
-      // Lưu tin nhắn vào cơ sở dữ liệu
-      const groupMessage = new GroupMessage({ groupId, sender, message });
+      // Encrypt group message
+      const encryptedMessage = encrypt(message);
+      const groupMessage = new GroupMessage({ 
+        groupId, 
+        sender, 
+        message: encryptedMessage 
+      });
       await groupMessage.save();
 
-      // Get sender's username and group details
       const senderUser = await User.findById(sender);
       const senderName = senderUser ? senderUser.username : 'Unknown';
       const group = await Group.findById(groupId);
-      // Phát tin nhắn tới tất cả thành viên trong nhóm
+
+      // Send original (unencrypted) message to clients
       io.to(groupId).emit('receiveGroupMessage', {
-        _id: groupMessage._id, // Add message ID
+        _id: groupMessage._id,
         groupId,
         sender,
         senderName,
-        message,
-        timestamp: groupMessage.timestamp,
+        message: message, // Send original message
+        timestamp: groupMessage.timestamp
       });
 
-      // Send push notification to all group members
+      // Add latest message update for groups
+      const latestMessageData = {
+        groupId,
+        message: message,
+        timestamp: new Date(),
+        type: 'text',
+        isRecalled: false
+      };
+
+      // Emit to all group members
+      io.to(groupId).emit('latestGroupMessage', latestMessageData);
+
+      // Handle notifications
       if (group && group.members) {
         const members = await User.find({ _id: { $in: group.members, $ne: sender } });
         

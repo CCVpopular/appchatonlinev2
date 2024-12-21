@@ -50,6 +50,7 @@ class _ChatScreenState extends State<ChatScreen> {
     chatService = ChatService(widget.userId, widget.friendId);
     messages.clear();
     _loadMessages();
+    _scrollController.addListener(_onScroll); // Add scroll listener
     
     // Add recall stream listener
     chatService.recallStream.listen((messageId) {
@@ -68,8 +69,15 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _onScroll() {
-    if (_scrollController.position.pixels == 0 && !_isLoadingMore && _hasMore) {
-      _loadMoreMessages();
+    // Load more when scrolled 70% up
+    if (!_isLoadingMore && _hasMore) {
+      final maxScroll = _scrollController.position.maxScrollExtent;
+      final currentScroll = _scrollController.position.pixels;
+      final triggerPoint = maxScroll * 0.3; // 70% from top (30% from bottom)
+      
+      if (currentScroll <= triggerPoint) {
+        _loadMoreMessages();
+      }
     }
   }
 
@@ -138,12 +146,24 @@ class _ChatScreenState extends State<ChatScreen> {
         limit: _pageSize,
       );
 
-      setState(() {
-        _currentPage++;
-        messages.insertAll(0, List<Map<String, String>>.from(result['messages']));
-        _hasMore = result['hasMore'];
-        _isLoadingMore = false;
-      });
+      if (mounted) {
+        setState(() {
+          _currentPage++;
+          // Maintain scroll position when adding messages
+          final oldPosition = _scrollController.position.pixels;
+          messages.insertAll(0, List<Map<String, String>>.from(result['messages']));
+          _hasMore = result['hasMore'];
+          _isLoadingMore = false;
+          
+          // Restore scroll position after layout
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (_scrollController.hasClients) {
+              _scrollController.jumpTo(oldPosition + 
+                (_scrollController.position.maxScrollExtent - oldPosition));
+            }
+          });
+        });
+      }
     } catch (e) {
       setState(() {
         _isLoadingMore = false;
@@ -661,20 +681,19 @@ class _ChatScreenState extends State<ChatScreen> {
                 : ListView.builder(
                     controller: _scrollController,
                     reverse: false,
-                    itemCount: messages.length + (_hasMore ? 1 : 0),
+                    itemCount: messages.length + 1, // Always add 1 for loading indicator
                     itemBuilder: (context, index) {
-                      if (index == 0 && _hasMore) {
-                        return Padding(
-                          padding: EdgeInsets.all(8.0),
-                          child: Center(
-                            child: _isLoadingMore
-                                ? CircularProgressIndicator()
-                                : Text('Pull to load more'),
+                      if (index == 0) {
+                        return Visibility(
+                          visible: _isLoadingMore,
+                          child: Container(
+                            padding: EdgeInsets.all(8.0),
+                            child: Center(child: CircularProgressIndicator()),
                           ),
                         );
                       }
-                      final actualIndex = _hasMore ? index - 1 : index;
-                      final message = messages[actualIndex];
+                      // Adjust index for actual messages
+                      final message = messages[index - 1];
                       final isCurrentUser = message['sender'] == widget.userId;
                       final isRecalled = message['isRecalled'] == 'true';
 
