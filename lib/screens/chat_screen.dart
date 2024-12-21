@@ -57,11 +57,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     messages.clear();
     _loadMessages();
     _scrollController.addListener(_onScroll); // Add scroll listener
-    
     // Add recall stream listener
     chatService.recallStream.listen((messageId) {
       setState(() {
-        final index = messages.indexWhere((msg) => msg['id'] == messageId); 
+        final index = messages.indexWhere((msg) => msg['id'] == messageId);
         if (index != -1) {
           messages[index]['isRecalled'] = 'true';
         }
@@ -80,7 +79,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       final maxScroll = _scrollController.position.maxScrollExtent;
       final currentScroll = _scrollController.position.pixels;
       final triggerPoint = maxScroll * 0.3; // 70% from top (30% from bottom)
-      
+
       if (currentScroll <= triggerPoint) {
         _loadMoreMessages();
       }
@@ -90,14 +89,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   Future<void> _loadUserAvatars() async {
     try {
       // Load friend's profile
-      final friendProfile = await http.get(
-        Uri.parse('${Config.apiBaseUrl}/api/users/profile/${widget.friendId}')
-      );
-      
+      final friendProfile = await http.get(Uri.parse(
+          '${Config.apiBaseUrl}/api/users/profile/${widget.friendId}'));
+
       // Load my profile
       final myProfile = await http.get(
-        Uri.parse('${Config.apiBaseUrl}/api/users/profile/${widget.userId}')
-      );
+          Uri.parse('${Config.apiBaseUrl}/api/users/profile/${widget.userId}'));
 
       if (mounted) {
         setState(() {
@@ -117,8 +114,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         isLoading = true;
       });
 
-      final result = await chatService.loadMessages(page: _currentPage, limit: _pageSize);
-      
+      final result =
+          await chatService.loadMessages(page: _currentPage, limit: _pageSize);
+
       setState(() {
         messages.clear();
         messages.addAll(List<Map<String, String>>.from(result['messages']));
@@ -157,15 +155,16 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           _currentPage++;
           // Maintain scroll position when adding messages
           final oldPosition = _scrollController.position.pixels;
-          messages.insertAll(0, List<Map<String, String>>.from(result['messages']));
+          messages.insertAll(
+              0, List<Map<String, String>>.from(result['messages']));
           _hasMore = result['hasMore'];
           _isLoadingMore = false;
-          
+
           // Restore scroll position after layout
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (_scrollController.hasClients) {
-              _scrollController.jumpTo(oldPosition + 
-                (_scrollController.position.maxScrollExtent - oldPosition));
+              _scrollController.jumpTo(oldPosition +
+                  (_scrollController.position.maxScrollExtent - oldPosition));
             }
           });
         });
@@ -182,12 +181,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     try {
       final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
       if (image != null) {
-        await chatService.sendImage(
-          File(image.path),
-          onProgress: (progress) {
-            // Progress is now handled by the upload progress card
-          }
-        );
+        await chatService.sendImage(File(image.path), onProgress: (progress) {
+          // Progress is now handled by the upload progress card
+        });
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -203,28 +199,25 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       if (result != null) {
         File file = File(result.files.single.path!);
         String fileName = result.files.single.name;
-        String? mimeType = result.files.single.extension != null 
+        String? mimeType = result.files.single.extension != null
             ? 'application/${result.files.single.extension}'
             : 'application/octet-stream';
-        
+
         // Check file size
         int fileSize = await file.length();
-        if (fileSize > 500 * 1024 * 1024) { // 500MB limit
+        if (fileSize > 500 * 1024 * 1024) {
+          // 500MB limit
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('File size must be less than 500MB')),
           );
           return;
         }
-        
-        await chatService.sendFile(
-          file, 
-          fileName, 
-          mimeType,
-          onProgress: (progress) {
-            // Progress is handled by the upload progress card
-          }
-        );
+
+        await chatService.sendFile(file, fileName, mimeType,
+            onProgress: (progress) {
+          // Progress is handled by the upload progress card
+        });
       }
     } catch (e) {
       if (!mounted) return;
@@ -349,7 +342,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   void _onScreenVisible() {
     _isScreenVisible = true;
     _markMessagesAsRead();
-    
+
     // Setup periodic read status updates while screen is visible
     _readStatusTimer?.cancel();
     _readStatusTimer = Timer.periodic(const Duration(seconds: 5), (_) {
@@ -361,14 +354,14 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
   Future<void> _markMessagesAsRead() async {
     if (!_isScreenVisible) return;
-    
+
     try {
       final response = await http.post(
         Uri.parse('${Config.apiBaseUrl}/api/messages/mark-read'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'senderId': widget.friendId, // Messages FROM friend
-          'receiverId': widget.userId,  // Messages TO current user
+          'receiverId': widget.userId, // Messages TO current user
         }),
       );
 
@@ -394,16 +387,14 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
             radius: 20,
           ),
           placeholder: (context, url) => CircleAvatar(
-            backgroundColor: isCurrentUser 
-              ? Color.fromARGB(255, 3, 62, 72)
-              : Colors.grey,
+            backgroundColor:
+                isCurrentUser ? Color.fromARGB(255, 3, 62, 72) : Colors.grey,
             radius: 20,
             child: Icon(Icons.person, color: Colors.white, size: 20),
           ),
           errorWidget: (context, url, error) => CircleAvatar(
-            backgroundColor: isCurrentUser 
-              ? Color.fromARGB(255, 3, 62, 72)
-              : Colors.grey,
+            backgroundColor:
+                isCurrentUser ? Color.fromARGB(255, 3, 62, 72) : Colors.grey,
             radius: 20,
             child: Icon(Icons.person, color: Colors.white, size: 20),
           ),
@@ -417,9 +408,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         right: isCurrentUser ? 8.0 : 4.0,
       ),
       child: CircleAvatar(
-        backgroundColor: isCurrentUser 
-          ? Color.fromARGB(255, 3, 62, 72)
-          : Colors.grey,
+        backgroundColor:
+            isCurrentUser ? Color.fromARGB(255, 3, 62, 72) : Colors.grey,
         radius: 20,
         child: Icon(Icons.person, color: Colors.white, size: 20),
       ),
@@ -428,7 +418,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
   Future<void> _downloadImage(String imageUrl) async {
     try {
-      final fileName = 'IMG_${DateTime.now().millisecondsSinceEpoch}${path.extension(imageUrl)}';
+      final fileName =
+          'IMG_${DateTime.now().millisecondsSinceEpoch}${path.extension(imageUrl)}';
       final taskId = await DownloadService.downloadFile(
         url: imageUrl,
         fileName: fileName,
@@ -473,7 +464,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
   Widget _buildMessageContent(Map<String, String> message) {
     final isTemporary = message['isTemporary'] == 'true';
-    
+
     if (isTemporary) {
       return Container(
         margin: const EdgeInsets.all(5.0),
@@ -629,7 +620,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                   child: Text('Open File'),
                 ),
                 TextButton(
-                  onPressed: () => _downloadFile(fileInfo['viewLink'], fileInfo['fileName']),
+                  onPressed: () =>
+                      _downloadFile(fileInfo['viewLink'], fileInfo['fileName']),
                   child: Text('Download'),
                 ),
               ],
@@ -665,19 +657,16 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                   timeStr,
                   style: const TextStyle(
                     fontSize: 12,
-                    color: Colors.grey,
+                    color: Color.fromARGB(255, 4, 4, 4),
                   ),
                 ),
                 if (message['sender'] == widget.userId) ...[
                   const SizedBox(width: 4),
                   Icon(
-                    message['status'] == 'read' 
-                        ? Icons.done_all 
-                        : Icons.done,
+                    message['status'] == 'read' ? Icons.done_all : Icons.done,
                     size: 12,
-                    color: message['status'] == 'read' 
-                        ? Colors.blue 
-                        : Colors.grey,
+                    color:
+                        message['status'] == 'read' ? Colors.blue : Colors.grey,
                   ),
                 ],
               ],
@@ -720,26 +709,87 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(friendName ?? ''),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.video_call),
-            onPressed: _initiateCall,
-          ),
-        ],
-        backgroundColor: Colors.transparent, // Màu của AppBar
-        elevation: 4.0, // Tạo hiệu ứng đổ bóng cho AppBar
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color.fromARGB(207, 70, 131, 180), // Màu thứ hai
-                Color.fromARGB(41, 130, 190, 197), // Màu đầu tiên
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(70), // Điều chỉnh chiều cao của AppBar
+        child: Container(
+          margin: EdgeInsets.only(
+              top: 0,
+              left: 10,
+              right: 10,
+              bottom: 10), // Thêm margin xung quanh AppBar
+          child: AppBar(
+            title: Padding(
+              padding: EdgeInsets.only(
+                  left: 15, bottom: 15), // Thêm padding cho tiêu đề
+              child: Text(
+                friendName ?? '',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            backgroundColor: Colors.transparent, // Nền trong suốt
+            elevation: 0, // Xóa bóng đổ mặc định của AppBar
+            flexibleSpace: Stack(
+              // Sử dụng Stack để chồng các phần nền
+              children: [
+                // Nền thứ nhất (dưới cùng)
+                Positioned(
+                  top: 20, // Điều chỉnh vị trí nền thứ nhất
+                  left: 20,
+                  right: 0,
+                  bottom: 1,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Color.fromARGB(255, 57, 51, 66) // Nền tối
+                          : Color.fromARGB(77, 83, 32, 120), // Nền sáng
+                      borderRadius: BorderRadius.circular(25), // Bo góc
+                      border: Border.all(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white // Viền trắng khi chế độ tối
+                            : Colors.black, // Viền đen khi chế độ sáng
+                        width: 2, // Độ dày viền
+                      ),
+                    ),
+                  ),
+                ),
+                // Nền thứ hai (chồng lên nền thứ nhất)
+                Positioned(
+                  top:
+                      5, // Điều chỉnh vị trí nền thứ hai (giảm top để nền thứ hai nhỏ hơn)
+                  left: 5, // Điều chỉnh khoảng cách từ bên trái
+                  right: 8, // Điều chỉnh khoảng cách từ bên phải
+                  bottom: 10, // Điều chỉnh khoảng cách từ dưới
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Color.fromARGB(
+                              255, 77, 68, 89) // Nền nhẹ màu xám khi chế độ tối
+                          : Color.fromARGB(255, 255, 255,
+                              255), // Nền nhẹ màu trắng khi chế độ sáng
+                      borderRadius: BorderRadius.circular(25), // Bo góc
+                      border: Border.all(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white // Viền trắng khi chế độ tối
+                            : Colors.black, // Viền đen khi chế độ sáng
+                        width: 2, // Độ dày viền
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
+            actions: [
+              Padding(
+                padding:
+                    EdgeInsets.only(right: 10), // Thêm padding cho các icon
+                child: IconButton(
+                  icon: const Icon(Icons.video_call),
+                  onPressed: _initiateCall,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -751,7 +801,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                 : ListView.builder(
                     controller: _scrollController,
                     reverse: false,
-                    itemCount: messages.length + 1, // Always add 1 for loading indicator
+                    itemCount: messages.length +
+                        1, // Always add 1 for loading indicator
                     itemBuilder: (context, index) {
                       if (index == 0) {
                         return Visibility(
@@ -768,7 +819,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                       final isRecalled = message['isRecalled'] == 'true';
 
                       return GestureDetector(
-                        onLongPress: isCurrentUser && !isRecalled && message['id'] != null 
+                        onLongPress: isCurrentUser &&
+                                !isRecalled &&
+                                message['id'] != null
                             ? () => _showRecallDialog(message['id']!)
                             : null,
                         behavior: HitTestBehavior.translucent,
@@ -783,8 +836,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                               _buildAvatar(friendAvatar, false),
                             // Bong bóng tin nhắn
                             Flexible(child: _buildMessageContent(message)),
-                            if (isCurrentUser)
-                              _buildAvatar(myAvatar, true),
+                            if (isCurrentUser) _buildAvatar(myAvatar, true),
                           ],
                         ),
                       );
@@ -792,56 +844,87 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                   ),
           ),
           Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(
-              children: [
-                IconButton(
-                  icon: Icon(Icons.image),
-                  onPressed: _pickAndSendImage,
+            padding: const EdgeInsets.all(10),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? const Color.fromARGB(255, 33, 33, 33) // Nền tối
+                    : const Color.fromARGB(255, 255, 255, 255), // Nền sáng
+                borderRadius: BorderRadius.circular(25),
+                border: Border.all(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white // Viền trắng khi chế độ tối
+                      : Colors.black, // Viền đen khi chế độ sáng
+                  width: 2,
                 ),
-                IconButton(
-                  icon: Icon(Icons.attach_file),
-                  onPressed: _pickAndSendFile,
-                ),
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8.0), // Padding cho viền
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Color.fromARGB(
-                              176, 70, 131, 180), // Màu thứ hai của gradient
-                          Color.fromARGB(
-                              39, 130, 190, 197), // Màu đầu tiên của gradient
-                        ],
-                      ),
-                      borderRadius:
-                          BorderRadius.circular(15), // Bo góc cho thanh ngoài
-                    ),
-                    child: TextField(
-                      controller: _controller,
-                      maxLength: 1000, // Add character limit
-                      buildCounter: (context, {required currentLength, required isFocused, maxLength}) => Container(), // Hide counter
-                      decoration: const InputDecoration(
-                        hintText: 'Enter a message',
-                        border: InputBorder
-                            .none, // Loại bỏ viền mặc định của TextField
-                        contentPadding:
-                            EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Row(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8.0),
+                      child: IconButton(
+                        icon: const Icon(Icons.image),
+                        onPressed: _pickAndSendImage,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white
+                            : const Color.fromARGB(255, 103, 48, 129),
                       ),
                     ),
-                  ),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: IconButton(
+                        icon: const Icon(Icons.attach_file),
+                        onPressed: _pickAndSendFile,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white
+                            : const Color.fromARGB(255, 103, 48, 129),
+                      ),
+                    ),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 10),
+                        child: TextField(
+                          controller: _controller,
+                          maxLength: 1000,
+                          buildCounter: (context,
+                                  {required currentLength,
+                                  required isFocused,
+                                  maxLength}) =>
+                              null, // Ẩn bộ đếm ký tự
+                          decoration: const InputDecoration(
+                            hintText: 'Enter your message...',
+                            border:
+                                InputBorder.none, // Loại bỏ viền của TextField
+                          ),
+                        ),
+                      ),
+                    ),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? const Color.fromARGB(107, 128, 83, 180)
+                            : const Color.fromARGB(255, 255, 255, 255),
+                        border: Border.all(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.white
+                              : Colors.black,
+                          width: 2,
+                        ),
+                        shape: BoxShape.circle,
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.send),
+                        onPressed: _sendMessage,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? const Color.fromARGB(255, 255, 255, 255)
+                            : const Color.fromARGB(255, 103, 48, 129),
+                      ),
+                    ),
+                  ],
                 ),
-                IconButton(
-                  icon: const Icon(Icons.send),
-                  onPressed: _sendMessage,
-                  iconSize: 30,
-                  color: Color.fromARGB(227, 130, 190, 197), // Màu cho icon
-                ),
-              ],
+              ),
             ),
           ),
         ],

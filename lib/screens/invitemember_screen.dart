@@ -11,7 +11,6 @@ class InviteMemberScreen extends StatefulWidget {
   final String userId;
   final String baseUrl = Config.apiBaseUrl;
 
-
   const InviteMemberScreen(
       {Key? key, required this.groupId, required this.userId})
       : super(key: key);
@@ -41,7 +40,8 @@ class _InviteMemberScreenState extends State<InviteMemberScreen> {
   }
 
   Future<void> _loadFriends() async {
-    final url = Uri.parse('${widget.baseUrl}/api/friends/invitefriends/${widget.userId}');
+    final url = Uri.parse(
+        '${widget.baseUrl}/api/friends/invitefriends/${widget.userId}');
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
@@ -109,8 +109,82 @@ class _InviteMemberScreenState extends State<InviteMemberScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Invite Members'),
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(70), // Điều chỉnh chiều cao của AppBar
+        child: Container(
+          margin: EdgeInsets.only(
+            top: 0,
+            left: 10,
+            right: 10,
+            bottom: 10,
+          ), // Thêm margin xung quanh AppBar
+          child: AppBar(
+            title: Row(
+              children: [
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Invite Members',
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                    style: TextStyle(fontSize: 20),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.transparent, // Nền trong suốt
+            elevation: 0, // Xóa bóng đổ mặc định của AppBar
+            flexibleSpace: Stack(
+              children: [
+                // Nền thứ nhất (dưới cùng)
+                Positioned(
+                  top: 20, // Điều chỉnh vị trí nền thứ nhất
+                  left: 20,
+                  right: 0,
+                  bottom: 1,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Color.fromARGB(255, 57, 51, 66) // Nền tối
+                          : Color.fromARGB(77, 83, 32, 120), // Nền sáng
+                      borderRadius: BorderRadius.circular(25), // Bo góc
+                      border: Border.all(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white // Viền trắng khi chế độ tối
+                            : Colors.black, // Viền đen khi chế độ sáng
+                        width: 2, // Độ dày viền
+                      ),
+                    ),
+                  ),
+                ),
+                // Nền thứ hai (chồng lên nền thứ nhất)
+                Positioned(
+                  top:
+                      5, // Điều chỉnh vị trí nền thứ hai (giảm top để nền thứ hai nhỏ hơn)
+                  left: 5, // Điều chỉnh khoảng cách từ bên trái
+                  right: 8, // Điều chỉnh khoảng cách từ bên phải
+                  bottom: 10, // Điều chỉnh khoảng cách từ dưới
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Color.fromARGB(
+                              255, 77, 68, 89) // Nền nhẹ màu xám khi chế độ tối
+                          : Color.fromARGB(255, 255, 255,
+                              255), // Nền nhẹ màu trắng khi chế độ sáng
+                      borderRadius: BorderRadius.circular(25), // Bo góc
+                      border: Border.all(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white // Viền trắng khi chế độ tối
+                            : Colors.black, // Viền đen khi chế độ sáng
+                        width: 2, // Độ dày viền
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
       body: isLoading
           ? Center(child: CircularProgressIndicator())
