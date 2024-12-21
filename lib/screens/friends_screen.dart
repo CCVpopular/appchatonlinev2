@@ -394,7 +394,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
             decoration: BoxDecoration(
               gradient: Theme.of(context).brightness == Brightness.dark
                   ? LinearGradient(
-                      colors: [Color.fromARGB(255, 37, 3, 55), Color.fromARGB(255, 101, 37, 173), Color.fromARGB(255, 76, 59, 118), Color.fromARGB(255, 151, 122, 189)], // Gradient cho chế độ tối
+                      colors: [Color.fromARGB(255, 37, 3, 55), Color.fromARGB(255, 53, 11, 75), Color.fromARGB(255, 61, 22, 82), Color.fromARGB(255, 161, 110, 188)], // Gradient cho chế độ tối
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     )
