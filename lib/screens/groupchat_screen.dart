@@ -17,7 +17,12 @@ class GroupChatScreen extends StatefulWidget {
   final String userId;
   final String groupNameReal;
 
-  const GroupChatScreen({Key? key, required this.groupId, required this.userId, required this.groupNameReal}) : super(key: key);
+  const GroupChatScreen(
+      {Key? key,
+      required this.groupId,
+      required this.userId,
+      required this.groupNameReal})
+      : super(key: key);
 
   @override
   _GroupChatScreenState createState() => _GroupChatScreenState();
@@ -30,26 +35,26 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   List<Map<String, dynamic>> _currentMessages = [];
   String? groupAvatar;
   String? groupName;
-  Map<String, String> userAvatars = {};  // Add this line to store user avatars
+  Map<String, String> userAvatars = {}; // Add this line to store user avatars
 
   // Add these variables
   bool _isLoadingMore = false;
   bool _hasMoreMessages = true;
   int _currentPage = 1;
   final int _messagesPerPage = 20;
-  bool _shouldAutoScroll = true;  // Add this flag
+  bool _shouldAutoScroll = true; // Add this flag
 
   @override
   void initState() {
     super.initState();
     groupChatService = GroupChatService(widget.groupId);
     _setupScrollController();
-    
+
     // Update recall stream listener
     groupChatService.recallStream.listen((messageId) {
       setState(() {
-        final index = _currentMessages.indexWhere((msg) => 
-          (msg['_id'] ?? msg['id']) == messageId);
+        final index = _currentMessages
+            .indexWhere((msg) => (msg['_id'] ?? msg['id']) == messageId);
         if (index != -1) {
           _currentMessages[index]['isRecalled'] = true;
           // Trigger UI update since we're modifying the list directly
@@ -59,9 +64,9 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     });
 
     _loadGroupInfo();
-    
+
     DownloadService.initialize();
-    _loadMemberAvatars();  // Add this line
+    _loadMemberAvatars(); // Add this line
     _setupCallNotifications();
   }
 
@@ -71,7 +76,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
         final maxScroll = _scrollController.position.maxScrollExtent;
         final currentScroll = _scrollController.position.pixels;
         final triggerPoint = maxScroll * 0.3; // 70% from top
-        
+
         if (currentScroll <= triggerPoint) {
           _loadMoreMessages();
         }
@@ -88,12 +93,14 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     });
 
     try {
-      final result = await groupChatService.loadMoreMessages(_currentPage + 1, _messagesPerPage);
-      
+      final result = await groupChatService.loadMoreMessages(
+          _currentPage + 1, _messagesPerPage);
+
       if (mounted) {
         setState(() {
           final oldPosition = _scrollController.position.pixels;
-          _currentMessages.insertAll(0, List<Map<String, dynamic>>.from(result.messages));
+          _currentMessages.insertAll(
+              0, List<Map<String, dynamic>>.from(result.messages));
           _hasMoreMessages = _currentPage < result.totalPages;
           if (_hasMoreMessages) {
             _currentPage++;
@@ -103,8 +110,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
           // Restore scroll position
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (_scrollController.hasClients) {
-              _scrollController.jumpTo(oldPosition + 
-                (_scrollController.position.maxScrollExtent - oldPosition));
+              _scrollController.jumpTo(oldPosition +
+                  (_scrollController.position.maxScrollExtent - oldPosition));
             }
           });
         });
@@ -119,10 +126,9 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
 
   Future<void> _loadGroupInfo() async {
     try {
-      final response = await http.get(
-        Uri.parse('${Config.apiBaseUrl}/api/groups/group-info/${widget.groupId}')
-      );
-      
+      final response = await http.get(Uri.parse(
+          '${Config.apiBaseUrl}/api/groups/group-info/${widget.groupId}'));
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         setState(() {
@@ -137,9 +143,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
 
   Future<void> _loadMemberAvatars() async {
     try {
-      final response = await http.get(
-        Uri.parse('${Config.apiBaseUrl}/api/groups/members/${widget.groupId}')
-      );
+      final response = await http.get(Uri.parse(
+          '${Config.apiBaseUrl}/api/groups/members/${widget.groupId}'));
       print(response.statusCode);
       if (response.statusCode == 200) {
         final members = jsonDecode(response.body) as List;
@@ -157,16 +162,15 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     try {
       final ImagePicker picker = ImagePicker();
       final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-      
+
       if (image != null) {
         final request = http.MultipartRequest(
-          'POST',
-          Uri.parse('${Config.apiBaseUrl}/api/groups/update-avatar/${widget.groupId}')
-        );
+            'POST',
+            Uri.parse(
+                '${Config.apiBaseUrl}/api/groups/update-avatar/${widget.groupId}'));
 
-        request.files.add(
-          await http.MultipartFile.fromPath('avatar', image.path)
-        );
+        request.files
+            .add(await http.MultipartFile.fromPath('avatar', image.path));
 
         final response = await request.send();
         final responseData = await response.stream.bytesToString();
@@ -203,7 +207,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
 
   void _sendMessage() {
     if (_controller.text.isNotEmpty) {
-      _shouldAutoScroll = true;  // Enable auto-scroll for new messages
+      _shouldAutoScroll = true; // Enable auto-scroll for new messages
       groupChatService.sendMessage(widget.userId, _controller.text);
       _controller.clear();
       // Scroll to bottom after sending
@@ -215,10 +219,10 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     try {
       final ImagePicker picker = ImagePicker();
       final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-      
+
       if (image != null) {
         File imageFile = File(image.path);
-                                                                                                                                                                                          final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
+        final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
         setState(() {
           _currentMessages.add({
             'id': tempId,
@@ -231,16 +235,16 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
             'isRecalled': false,
           });
         });
-        
+
         // Add message listener to remove temp message
         groupChatService.socket.once('receiveGroupMessage', (data) {
           setState(() {
             _currentMessages.removeWhere((msg) => msg['id'] == tempId);
           });
         });
-        
+
         await groupChatService.sendImage(
-          widget.userId, 
+          widget.userId,
           imageFile,
           onProgress: (progress) {
             print('Upload progress: ${(progress * 100).toStringAsFixed(1)}%');
@@ -261,10 +265,10 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
       if (result != null) {
         File file = File(result.files.single.path!);
         String fileName = result.files.single.name;
-        String? mimeType = result.files.single.extension != null 
+        String? mimeType = result.files.single.extension != null
             ? 'application/${result.files.single.extension}'
             : 'application/octet-stream';
-        
+
         final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
         setState(() {
           _currentMessages.add({
@@ -285,7 +289,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
             _currentMessages.removeWhere((msg) => msg['id'] == tempId);
           });
         });
-        
+
         await groupChatService.sendFile(
           widget.userId,
           file,
@@ -330,9 +334,9 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   String _formatTime(String timestamp) {
     final dateTime = DateTime.parse(timestamp).toLocal();
     final now = DateTime.now();
-    
-    if (dateTime.year == now.year && 
-        dateTime.month == now.month && 
+
+    if (dateTime.year == now.year &&
+        dateTime.month == now.month &&
         dateTime.day == now.day) {
       // Today, just show time
       return '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
@@ -345,7 +349,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   Widget _buildMessageContent(Map<String, dynamic> message) {
     final isRecalled = message['isRecalled'] == true;
     final isSender = message['senderId'] == widget.userId;
-    
+
     if (message['type'] == 'loading') {
       return Container(
         margin: const EdgeInsets.all(5.0),
@@ -382,12 +386,13 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
       return Container(
         padding: EdgeInsets.all(4),
         child: GestureDetector(
-          onLongPress: isSender && !isRecalled 
+          onLongPress: isSender && !isRecalled
               ? () => _showRecallDialog(message['id'])
               : null,
           onTap: () => _downloadImage(message['message']),
           child: Column(
-            crossAxisAlignment: isSender ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+            crossAxisAlignment:
+                isSender ? CrossAxisAlignment.end : CrossAxisAlignment.start,
             children: [
               if (!isSender && !isRecalled)
                 Padding(
@@ -425,7 +430,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
       return Container(
         margin: const EdgeInsets.all(5.0),
         child: GestureDetector(
-          onLongPress: isSender && !isRecalled 
+          onLongPress: isSender && !isRecalled
               ? () => _showRecallDialog(message['id'])
               : null,
           child: Container(
@@ -455,10 +460,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                     Icon(Icons.file_present),
                     SizedBox(width: 8),
                     Expanded(
-                      child: Text(
-                        fileInfo['fileName'],
-                        style: TextStyle(fontWeight: FontWeight.bold)
-                      ),
+                      child: Text(fileInfo['fileName'],
+                          style: TextStyle(fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),
@@ -469,7 +472,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                       child: Text('Open File'),
                     ),
                     TextButton(
-                      onPressed: () => _downloadFile(fileInfo['viewLink'], fileInfo['fileName']),
+                      onPressed: () => _downloadFile(
+                          fileInfo['viewLink'], fileInfo['fileName']),
                       child: Text('Download'),
                     ),
                   ],
@@ -489,7 +493,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     }
 
     return GestureDetector(
-      onLongPress: isSender && !isRecalled 
+      onLongPress: isSender && !isRecalled
           ? () => _showRecallDialog(message['id'])
           : null,
       child: Container(
@@ -502,7 +506,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
           borderRadius: BorderRadius.circular(10),
         ),
         child: Column(
-          crossAxisAlignment: isSender ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          crossAxisAlignment:
+              isSender ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
             if (!isSender && !isRecalled)
               Padding(
@@ -517,18 +522,18 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
               ),
             if (!isRecalled)
               message['type'] == 'image'
-                ? CachedNetworkImage(
-                    imageUrl: message['message'],
-                    placeholder: (context, url) => Container(
-                      width: 50,
-                      height: 50,
-                      child: CircularProgressIndicator(),
-                    ),
-                    errorWidget: (context, url, error) => Icon(Icons.error),
-                  )
-                : message['type'] == 'file'
-                  ? _buildFileMessageContent(message)
-                  : Text(message['message'] ?? ''),
+                  ? CachedNetworkImage(
+                      imageUrl: message['message'],
+                      placeholder: (context, url) => Container(
+                        width: 50,
+                        height: 50,
+                        child: CircularProgressIndicator(),
+                      ),
+                      errorWidget: (context, url, error) => Icon(Icons.error),
+                    )
+                  : message['type'] == 'file'
+                      ? _buildFileMessageContent(message)
+                      : Text(message['message'] ?? ''),
             if (isRecalled)
               Row(
                 mainAxisSize: MainAxisSize.min,
@@ -577,10 +582,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
               Icon(Icons.file_present),
               SizedBox(width: 8),
               Expanded(
-                child: Text(
-                  fileInfo['fileName'],
-                  style: TextStyle(fontWeight: FontWeight.bold)
-                ),
+                child: Text(fileInfo['fileName'],
+                    style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ],
           ),
@@ -609,16 +612,14 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
             radius: 20,
           ),
           placeholder: (context, url) => CircleAvatar(
-            backgroundColor: isSender 
-              ? Color.fromARGB(255, 3, 62, 72)
-              : Colors.grey,
+            backgroundColor:
+                isSender ? Color.fromARGB(255, 3, 62, 72) : Colors.grey,
             radius: 20,
             child: Icon(Icons.person, color: Colors.white, size: 20),
           ),
           errorWidget: (context, url, error) => CircleAvatar(
-            backgroundColor: isSender 
-              ? Color.fromARGB(255, 3, 62, 72)
-              : Colors.grey,
+            backgroundColor:
+                isSender ? Color.fromARGB(255, 3, 62, 72) : Colors.grey,
             radius: 20,
             child: Icon(Icons.person, color: Colors.white, size: 20),
           ),
@@ -627,9 +628,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     }
 
     return CircleAvatar(
-      backgroundColor: isSender 
-        ? Color.fromARGB(255, 3, 62, 72)
-        : Colors.grey,
+      backgroundColor: isSender ? Color.fromARGB(255, 3, 62, 72) : Colors.grey,
       radius: 20,
       child: Icon(Icons.person, color: Colors.white, size: 20),
     );
@@ -683,7 +682,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   void _setupCallNotifications() {
     groupChatService.socket.on('groupCallStarted', (data) {
       if (!mounted) return;
-      
+
       // Don't show notification to call initiator
       if (data['initiatorId'] == widget.userId) return;
 
@@ -703,7 +702,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
             TextButton(
               onPressed: () async {
                 Navigator.pop(context); // Close dialog
-                final token = await groupChatService.initializeGroupCall(widget.groupId);
+                final token =
+                    await groupChatService.initializeGroupCall(widget.groupId);
                 if (token != null && mounted) {
                   Navigator.push(
                     context,
@@ -726,22 +726,35 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
       );
     });
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          children: [
-            GestureDetector(
-              onTap: _updateGroupAvatar,
-              child: CircleAvatar(
-                backgroundImage: groupAvatar != null ? 
-                  CachedNetworkImageProvider(groupAvatar!) : null,
-                child: groupAvatar == null ? Icon(Icons.group) : null,
-              ),
+      appBar: PreferredSize(
+  preferredSize: Size.fromHeight(70), // Điều chỉnh chiều cao của AppBar
+  child: Container(
+    margin: EdgeInsets.only(
+      top: 0,
+      left: 10,
+      right: 10,
+      bottom: 10,
+    ), // Thêm margin xung quanh AppBar
+    child: AppBar(
+      title: Row(
+        children: [
+          GestureDetector(
+            onTap: _updateGroupAvatar,
+            child: CircleAvatar(
+              backgroundImage: groupAvatar != null
+                  ? CachedNetworkImageProvider(groupAvatar!)
+                  : null,
+              child: groupAvatar == null ? Icon(Icons.group) : null,
             ),
-            SizedBox(width: 8),
-            Expanded(
+          ),
+          SizedBox(width: 8),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(top: 0), // Điều chỉnh khoảng cách trên để nhích lên
               child: Text(
                 widget.groupNameReal,
                 overflow: TextOverflow.ellipsis,
@@ -749,13 +762,65 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                 style: TextStyle(fontSize: 20),
               ),
             ),
-          ],
-        ),
-        actions: [
-          IconButton(
+          ),
+        ],
+      ),
+      backgroundColor: Colors.transparent, // Nền trong suốt
+      elevation: 0, // Xóa bóng đổ mặc định của AppBar
+      flexibleSpace: Stack(
+        children: [
+          // Nền thứ nhất (dưới cùng)
+          Positioned(
+            top: 20, // Điều chỉnh vị trí nền thứ nhất
+            left: 20,
+            right: 0,
+            bottom: 1,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Color.fromARGB(255, 57, 51, 66) // Nền tối
+                    : Color.fromARGB(77, 83, 32, 120), // Nền sáng
+                borderRadius: BorderRadius.circular(25), // Bo góc
+                border: Border.all(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white // Viền trắng khi chế độ tối
+                      : Colors.black, // Viền đen khi chế độ sáng
+                  width: 2, // Độ dày viền
+                ),
+              ),
+            ),
+          ),
+          // Nền thứ hai (chồng lên nền thứ nhất)
+          Positioned(
+            top: 5, // Điều chỉnh vị trí nền thứ hai (giảm top để nền thứ hai nhỏ hơn)
+            left: 5, // Điều chỉnh khoảng cách từ bên trái
+            right: 8, // Điều chỉnh khoảng cách từ bên phải
+            bottom: 10, // Điều chỉnh khoảng cách từ dưới
+            child: Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Color.fromARGB(255, 77, 68, 89) // Nền nhẹ màu xám khi chế độ tối
+                    : Color.fromARGB(255, 255, 255, 255), // Nền nhẹ màu trắng khi chế độ sáng
+                borderRadius: BorderRadius.circular(25), // Bo góc
+                border: Border.all(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white // Viền trắng khi chế độ tối
+                      : Colors.black, // Viền đen khi chế độ sáng
+                  width: 2, // Độ dày viền
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        Padding(
+          padding: EdgeInsets.only(right: 0), // Thêm padding cho các icon
+          child: IconButton(
             icon: Icon(Icons.call),
             onPressed: () async {
-              final token = await groupChatService.initializeGroupCall(widget.groupId);
+              final token = await groupChatService
+                  .initializeGroupCall(widget.groupId);
               if (token != null) {
                 Navigator.push(
                   context,
@@ -772,7 +837,10 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
               }
             },
           ),
-          IconButton(
+        ),
+        Padding(
+          padding: EdgeInsets.only(right: 20), // Thêm padding cho các icon
+          child: IconButton(
             icon: Icon(Icons.person_add),
             onPressed: () {
               Navigator.push(
@@ -786,8 +854,12 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
               );
             },
           ),
-        ],
-      ),
+        ),
+      ],
+    ),
+  ),
+),
+
       body: Column(
         children: [
           Expanded(
@@ -804,18 +876,19 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
 
                 final messages = snapshot.data!;
                 _currentMessages = messages;
-                
+
                 // Only auto scroll for new messages, not when loading old ones
                 if (_shouldAutoScroll) {
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     if (_scrollController.hasClients) {
-                      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+                      _scrollController
+                          .jumpTo(_scrollController.position.maxScrollExtent);
                     }
                   });
                 }
-                
+
                 return ListView.builder(
-                  controller: _scrollController, 
+                  controller: _scrollController,
                   itemCount: messages.length + 1,
                   itemBuilder: (context, index) {
                     if (index == 0) {
@@ -829,7 +902,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                     }
                     final messageIndex = index - 1;
                     if (messageIndex >= messages.length) return null;
-                    
+
                     final message = messages[messageIndex];
                     // Update to use _id instead of id for consistency
                     final messageId = message['_id'] ?? message['id'];
@@ -842,7 +915,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                           _buildMemberAvatar(message['senderId'], false),
                         Flexible(
                           child: GestureDetector(
-                            onLongPress: message['senderId'] == widget.userId && !message['isRecalled']
+                            onLongPress: message['senderId'] == widget.userId &&
+                                    !message['isRecalled']
                                 ? () => _showRecallDialog(messageId)
                                 : null,
                             child: _buildMessageContent(message),
@@ -858,32 +932,85 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(
-              children: [
-                IconButton(
-                  icon: Icon(Icons.image),
-                  onPressed: _pickAndSendImage,
-                ),
-                IconButton(
-                  icon: Icon(Icons.attach_file),
-                  onPressed: _pickAndSendFile,
-                ),
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    maxLength: 1000, // Add character limit
-                    buildCounter: (context, {required currentLength, required isFocused, maxLength}) => Container(), // Hide counter
-                    decoration: InputDecoration(hintText: 'Enter a message'),
-                  ),
-                ),
-                IconButton(
-                  icon: Icon(Icons.send),
-                  onPressed: _sendMessage,
-                ),
-              ],
+  padding: const EdgeInsets.all(10),
+  child: Container(
+    decoration: BoxDecoration(
+      color: Theme.of(context).brightness == Brightness.dark
+          ? const Color.fromARGB(255, 33, 33, 33) // Nền tối
+          : const Color.fromARGB(255, 255, 255, 255), // Nền sáng
+      borderRadius: BorderRadius.circular(25),
+      border: Border.all(
+        color: Theme.of(context).brightness == Brightness.dark
+            ? Colors.white // Viền trắng khi chế độ tối
+            : Colors.black, // Viền đen khi chế độ sáng
+        width: 2,
+      ),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Row(
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 8.0),
+            child: IconButton(
+              icon: const Icon(Icons.image),
+              onPressed: _pickAndSendImage,
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.white
+                  : const Color.fromARGB(255, 103, 48, 129),
             ),
           ),
+          Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: IconButton(
+              icon: const Icon(Icons.attach_file),
+              onPressed: _pickAndSendFile,
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.white
+                  : const Color.fromARGB(255, 103, 48, 129),
+            ),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(left: 10),
+              child: TextField(
+                controller: _controller,
+                maxLength: 1000,
+                buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null, // Ẩn bộ đếm ký tự
+                decoration: InputDecoration(
+                  hintText: 'Enter a message...',
+                  border: InputBorder.none, // Loại bỏ viền của TextField
+                ),
+              ),
+            ),
+          ),
+          Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? const Color.fromARGB(107, 128, 83, 180)
+                  : const Color.fromARGB(255, 255, 255, 255),
+              border: Border.all(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.white
+                    : Colors.black,
+                width: 2,
+              ),
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.send),
+              onPressed: _sendMessage,
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? const Color.fromARGB(255, 255, 255, 255)
+                  : const Color.fromARGB(255, 103, 48, 129),
+            ),
+          ),
+        ],
+      ),
+    ),
+  ),
+),
+
         ],
       ),
     );
