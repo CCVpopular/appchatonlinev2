@@ -553,7 +553,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                         top: 11,
                         left: 11,
                         child: Container(
-                          width: screenWidth * 0.818,
+                          width: screenWidth * 0.8,
                           height: 70,
                           decoration: BoxDecoration(
                             color: Color.fromARGB(255, 123, 77, 149), // Màu nền cho hình đầu tiên
@@ -572,7 +572,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                         top: 5,
                         left: -0.5,
                         child: Container(
-                          width: screenWidth * 0.83,
+                          width: screenWidth * 0.8,
                           height: 70,
                           decoration: BoxDecoration(
                             color:
