@@ -39,7 +39,9 @@ router.get('/messages/:sender/:receiver', async (req, res) => {
     // Decrypt messages before sending
     const decryptedMessages = messages.map(msg => ({
       ...msg._doc,
-      message: msg.isRecalled ? msg.message : decrypt(msg.message)
+      message: msg.isRecalled ? msg.message : 
+        msg.type === 'file' || msg.type === 'image' ? 
+          decrypt(msg.message) : decrypt(msg.message)
     }));
 
     res.status(200).send({

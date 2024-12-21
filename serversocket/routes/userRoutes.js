@@ -166,7 +166,7 @@ router.post('/', async (req, res) => {
       username, 
       password: hashedPassword, 
       role,
-      status: 'offline',  // Explicitly set status to offline
+      status: 'offline', 
       lastSeen: Date.now()
     });
     await user.save();

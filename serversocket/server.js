@@ -314,16 +314,16 @@ io.on('connection', (socket) => {
 
       const directViewUrl = `https://drive.google.com/uc?export=view&id=${driveResponse.data.id}`;
 
-      // Save message with direct view URL
+      const encryptedUrl = encrypt(directViewUrl);
       const newMessage = new Message({
         sender,
         receiver,
-        message: directViewUrl,
+        message: encryptedUrl,
         type: 'image'
       });
       await newMessage.save();
 
-      // Emit to room and cleanup
+      // Send decrypted URL in real-time message
       io.to(roomName).emit('receiveMessage', {
         _id: newMessage._id,
         sender,
@@ -450,25 +450,28 @@ io.on('connection', (socket) => {
         fields: 'id, webViewLink'
       });
 
-      // Save message with file info
+      const fileInfo = {
+        fileName,
+        fileId: driveResponse.data.id,
+        viewLink: driveResponse.data.webViewLink
+      };
+
+      const encryptedFileInfo = encrypt(JSON.stringify(fileInfo));
+      
       const newMessage = new Message({
         sender,
         receiver,
-        message: JSON.stringify({
-          fileName,
-          fileId: driveResponse.data.id,
-          viewLink: driveResponse.data.webViewLink
-        }),
+        message: encryptedFileInfo,
         type: 'file'
       });
       await newMessage.save();
 
-      // Emit to room
+      // Send decrypted file info in real-time message
       io.to(roomName).emit('receiveMessage', {
         _id: newMessage._id,
         sender,
         receiver,
-        message: newMessage.message,
+        message: JSON.stringify(fileInfo),
         type: 'file',
         timestamp: newMessage.timestamp
       });
