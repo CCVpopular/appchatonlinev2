@@ -8,6 +8,7 @@ const MessageSchema = new mongoose.Schema({
   status: { type: String, enum: ['sent', 'delivered', 'read'], default: 'sent' },
   isRecalled: { type: Boolean, default: false },
   type: { type: String, enum: ['text', 'image', 'file'], default: 'text' }, // Added 'file' to enum
+  readStatus: { type: String, enum: ['unread', 'read'], default: 'unread' } // Added readStatus field
 });
 
 module.exports = mongoose.model('Message', MessageSchema);
