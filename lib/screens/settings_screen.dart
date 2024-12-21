@@ -90,7 +90,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final themeNotifier = Provider.of<ValueNotifier<ThemeMode>>(context);
-
+    final screenHeight = MediaQuery.of(context).size.height;
     return Scaffold(
       appBar: PreferredSize(
         preferredSize: Size.fromHeight(70), // Điều chỉnh chiều cao của AppBar
@@ -172,12 +172,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: [
             // Nền thứ nhất thong tin nguoi dung (ở dưới cùng)
             Positioned(
-              top: 30,
-              left: 30,
-              right: 0,
-              bottom: 300,
+              // top: 30,
+              // left: 30,
+              // right: 0,
+              // bottom: 80,
               child: Container(
-                height: 250, // Đặt chiều cao cho nền thứ nhất
+                height: screenHeight * 0.8,
                 decoration: BoxDecoration(
                   color: Theme.of(context).brightness == Brightness.dark
                       ? Color.fromARGB(255, 57, 51, 66) // Nền tối
@@ -197,53 +197,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               top: 10, // Điều chỉnh vị trí của nền thứ hai
               left: 10,
               right: 10,
-              bottom: 310,
-              child: Container(
-                height: 200, // Đặt chiều cao cho nền thứ hai
-                decoration: BoxDecoration(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Color.fromARGB(
-                          255, 77, 68, 89) // Nền xám nhẹ khi chế độ tối
-                      : Color.fromARGB(
-                          255, 255, 255, 255), // Nền trắng khi chế độ sáng
-                  borderRadius: BorderRadius.circular(25), // Bo góc
-                  border: Border.all(
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? Colors.white // Viền trắng khi chế độ tối
-                        : Colors.black, // Viền đen khi chế độ sáng
-                    width: 2, // Độ dày viền
-                  ),
-                ),
-              ),
-            ),
-            //nen thu ba chua setting chon dark light mode
-            Positioned(
-              top: 350,
-              left: 30,
-              right: 0,
-              bottom: 120,
-              child: Container(
-                height: 250, // Đặt chiều cao cho nền thứ nhất
-                decoration: BoxDecoration(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Color.fromARGB(255, 57, 51, 66) // Nền tối
-                      : Color.fromARGB(77, 83, 32, 120), // Nền sáng
-                  borderRadius: BorderRadius.circular(25), // Bo góc
-                  border: Border.all(
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? Colors.white // Viền trắng khi chế độ tối
-                        : Colors.black, // Viền đen khi chế độ sáng
-                    width: 2, // Độ dày viền
-                  ),
-                ),
-              ),
-            ),
-            //nen thu tu setting chon dark light mode
-            Positioned(
-              top: 330, // Điều chỉnh vị trí của nền thứ hai
-              left: 10,
-              right: 10,
-              bottom: 130,
+              bottom: 290,
               child: Container(
                 height: 200, // Đặt chiều cao cho nền thứ hai
                 decoration: BoxDecoration(
@@ -264,7 +218,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             // Các phần tử trong body (avatar và thông tin người dùng)
             Positioned(
-              top: 60, // Điều chỉnh vị trí phần nội dung bên trong
+              top: 30, // Điều chỉnh vị trí phần nội dung bên trong
               left: 0,
               right: 0,
               child: Column(
@@ -314,7 +268,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   SizedBox(height: 10),
                   Text('Username: ${widget.username}'),
                   Text('User ID: ${widget.userId}'),
-                  SizedBox(height: 40),
+                  SizedBox(height: 60),
                   // Divider(),
                   ListTile(
                     leading: Padding(
@@ -455,9 +409,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                   ),
-
-                  // Divider(),
-                  SizedBox(height: 10),
                   ListTile(
                     leading: Padding(
                       padding:
