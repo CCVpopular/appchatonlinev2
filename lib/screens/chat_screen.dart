@@ -593,6 +593,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       return Container(
         margin: const EdgeInsets.all(5.0),
         padding: const EdgeInsets.all(12.0),
+        width: 300, // Giới hạn chiều rộng
         decoration: BoxDecoration(
           color: message['sender'] == widget.userId
               ? const Color.fromARGB(145, 130, 190, 197)
